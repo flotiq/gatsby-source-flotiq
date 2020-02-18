@@ -19,7 +19,7 @@ exports.sourceNodes = async ({actions}, {baseUrl, authToken}) => {
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
         createTypeDefs(contentTypeDefinitions.data);
         await Promise.all(contentTypeDefinitions.data.map(async ctd => {
-            let response = await fetch(apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1', {headers: headers});
+            let response = await fetch(apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000', {headers: headers});
             if (response.ok) {
                 const json = await response.json();
                 await Promise.all(json.data.map(async datum => {
