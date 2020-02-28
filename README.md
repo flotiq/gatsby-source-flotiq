@@ -17,7 +17,7 @@ Get up and running in minutes with a starter project:
 
 ## Install
 
-```
+```bash
 npm install --save https://github.com/flotiq/gatsby-source-flotiq
 ```
 

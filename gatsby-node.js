@@ -71,13 +71,15 @@ let createDatumDescription = async (ctd, datum) => {
         if(typeof datum[property] === 'object' && datum[property].length) {
             await Promise.all(Object.keys(datum[property][0]).map(async key => {
                 if(typeof datum[property][0][key] === 'object' && datum[property][0][key].length) {
-                    await Promise.all(datum[property][0][key].map(async (prop,idx) => {
-                        if(typeof prop.dataUrl !== 'undefined') {
-                            const response2  = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
-                            if(response2.ok) {
-                                datum[property][0][key][idx] = await response2.json();
+                    await Promise.all(datum[property].map( async (dat,index) => {
+                        await Promise.all(datum[property][index][key].map(async (prop,idx) => {
+                            if(typeof prop.dataUrl !== 'undefined') {
+                                const response2  = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
+                                if(response2.ok) {
+                                    datum[property][index][key][idx] = await response2.json();
+                                }
                             }
-                        }
+                        }))
                     }));
                 }
             }));
