@@ -8,18 +8,30 @@ let apiUrl;
 
 let typeDefs = '';
 
-exports.sourceNodes = async ({actions}, {baseUrl, authToken}) => {
-    const {createNode} = actions;
+exports.sourceNodes = async ({actions, store, getNodes, cache}, {baseUrl, authToken, forceReload}) => {
+    const {createNode, setPluginStatus, touchNode} = actions;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
 
     let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?internal=false&limit=10000&order_by=label', {headers: headers});
 
     if (contentTypeDefinitionsResponse.ok) {
+        if(forceReload) {
+            setPluginStatus({'updated_at': null});
+        }
+        const lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
+        const existingNodes = getNodes().filter(
+            n => n.internal.owner === `gatsby-source-flotiq`
+        );
         createTypeDefs(contentTypeDefinitions.data);
         await Promise.all(contentTypeDefinitions.data.map(async ctd => {
-            let response = await fetch(apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000', {headers: headers});
+            let filters = lastUpdate && lastUpdate.updated_at ? encodeURIComponent(JSON.stringify({"internal.updatedAt": {
+                    "type": "greaterThan",
+                    "filter": lastUpdate.updated_at
+                }
+            })) : '[]';
+            let response = await fetch(apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000&filters=' + filters, {headers: headers});
             if (response.ok) {
                 const json = await response.json();
                 await Promise.all(json.data.map(async datum => {
@@ -41,8 +53,15 @@ exports.sourceNodes = async ({actions}, {baseUrl, authToken}) => {
                         },
                     });
                 }));
+            } else {
+                console.log(response);
             }
         }));
+
+        existingNodes.forEach(n => touchNode({ nodeId: n.id }));
+        setPluginStatus({'updated_at': (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
+    } else {
+        console.log(contentTypeDefinitionsResponse);
     }
     return {};
 };
