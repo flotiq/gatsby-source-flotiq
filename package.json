@@ -2,7 +2,7 @@
     "name": "gatsby-source-flotiq",
     "version": "1.0.0",
     "dependencies": {
-        "crypto": "^1.0.1",
+        "gatsby-core-utils": "^1.0.32",
         "node-fetch": "^2.6.0"
     }
 }
