@@ -12,7 +12,6 @@ Get up and running in minutes with a starter project:
 ## Table of contents
 
 - [Install](#install)
-- [Options](#options)
 
 
 ## Install
@@ -30,7 +29,8 @@ module.exports = {
       "resolve": "gatsby-source-flotiq",		  
         "options": {
             "baseUrl": process.env.GATSBY_FLOTIQ_BASE_URL,
-            "authToken": process.env.FLOTIQ_API_KEY
+            "authToken": process.env.FLOTIQ_API_KEY,
+            "forceReload": false
         },
     },
   ],
@@ -39,5 +39,3 @@ module.exports = {
 ```
 
 At this point you should have added Content Type Definitions required by template you chosen.
-
-## Options
