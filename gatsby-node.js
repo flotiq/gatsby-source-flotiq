@@ -8,7 +8,10 @@ let headers = {
 };
 let apiUrl;
 
-let typeDefs = '';
+let typeDefinitionsDeferred;
+let typeDefinitionsPromise = new Promise((resolve, reject) => {
+    typeDefinitionsDeferred = {resolve: resolve, reject: reject};
+});
 
 exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload}) => {
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
@@ -44,16 +47,24 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
             foreignReferenceMap = {};
         }
         createTypeDefs(contentTypeDefinitions.data);
-        let changed = [];
+
         let count = 0;
         await Promise.all(contentTypeDefinitions.data.map(async ctd => {
-            let filters = lastUpdate && lastUpdate.updated_at ? encodeURIComponent(JSON.stringify({
-                "internal.updatedAt": {
-                    "type": "greaterThan",
-                    "filter": lastUpdate.updated_at
-                }
-            })) : '[]';
-            let response = await fetch(apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000&filters=' + filters, {headers: headers});
+
+            let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000';
+            let changed = [];
+
+            if(lastUpdate && lastUpdate.updated_at) {
+                url += '&filters=' + encodeURIComponent(JSON.stringify({
+                    "internal.updatedAt": {
+                        "type": "greaterThan",
+                        "filter": lastUpdate.updated_at
+                    }
+                }))
+            }
+            let response = await fetch(url, {headers: headers});
+            reporter.info(`Fetching content type ${ctd.name}: ${url}`);
+
             if (response.ok) {
                 const json = await response.json();
                 await Promise.all(json.data.map(async datum => {
@@ -79,6 +90,8 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     });
 
                 }));
+            } else {
+                reporter.warn('Error fetching data', response);
             }
             if (!forceReload) {
                 while (changed.length) {
@@ -132,19 +145,23 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
 
 exports.createSchemaCustomization = ({actions}) => {
     const {createTypes} = actions;
-    typeDefs = typeDefs + `
-    type FlotiqGallery {
-      id: String
-      extension: String
-    }
-    type FlotiqInternal {
-      createdAt: String!
-      deletedAt: String!
-      updatedAt: String!
-      contentType: String!
-    }
-  `;
-    createTypes(typeDefs);
+
+    typeDefinitionsPromise.then(typeDefs => {
+        typeDefs = typeDefs + `
+            type FlotiqGallery {
+              id: String
+              extension: String
+            }
+            type FlotiqInternal {
+              createdAt: String!
+              deletedAt: String!
+              updatedAt: String!
+              contentType: String!
+            }
+        `;
+        createTypes(typeDefs);
+    })
+
 };
 
 let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
@@ -196,6 +213,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
 };
 
 const createTypeDefs = (contentTypesDefinitions) => {
+    let typeDefs = '';
     contentTypesDefinitions.forEach(ctd => {
         let tmpDef = '';
         Object.keys(ctd.schemaDefinition.allOf[1].properties).forEach(property => {
@@ -210,6 +228,7 @@ const createTypeDefs = (contentTypesDefinitions) => {
         type ` + capitalize(ctd.name) + ' implements Node {' + tmpDef + `
         }`;
     });
+    typeDefinitionsDeferred.resolve(typeDefs);
 };
 
 const capitalize = (s) => {

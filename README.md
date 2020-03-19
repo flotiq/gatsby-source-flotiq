@@ -12,7 +12,6 @@ Get up and running in minutes with a starter project:
 ## Table of contents
 
 - [Install](#install)
-- [Options](#options)
 
 
 ## Install
@@ -40,5 +39,3 @@ module.exports = {
 ```
 
 At this point you should have added Content Type Definitions required by template you chosen.
-
-## Options
