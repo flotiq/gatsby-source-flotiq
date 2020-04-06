@@ -25,7 +25,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
     }
 
     if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
-        reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names.");
+        reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
     let foreignReferenceMap = {};
 
