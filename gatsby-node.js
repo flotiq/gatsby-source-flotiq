@@ -13,7 +13,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
     typeDefinitionsDeferred = {resolve: resolve, reject: reject};
 });
 
-exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload}) => {
+exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
@@ -22,6 +22,10 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
     }
     if (!authToken) {
         reporter.panic("FLOTIQ: You must specify API token (if you don't know what it is check: https://flotiq.com/docs/API/)");
+    }
+
+    if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
+        reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
     let foreignReferenceMap = {};
 
@@ -38,6 +42,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
+        const contentTypeDefsData = contentTypeDefinitions.data.filter(contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
@@ -46,10 +51,10 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
             lastUpdate = undefined;
             foreignReferenceMap = {};
         }
-        createTypeDefs(contentTypeDefinitions.data);
+        createTypeDefs(contentTypeDefsData);
 
         let count = 0;
-        await Promise.all(contentTypeDefinitions.data.map(async ctd => {
+        await Promise.all(contentTypeDefsData.map(async ctd => {
 
             let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000';
             let changed = [];
@@ -105,7 +110,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                                     const json3 = await response3.json();
                                     changed2.push(id.ctd + '_' + json3.id);
 
-                                    let nodeDatum3 = await createDatumDescription(contentTypeDefinitions.data.filter(d => d.name === id.ctd)[0], json3, foreignReferenceMap);
+                                    let nodeDatum3 = await createDatumDescription(contentTypeDefsData.filter(d => d.name === id.ctd)[0], json3, foreignReferenceMap);
                                     return createNode({
                                         ...nodeDatum3,
                                         // custom

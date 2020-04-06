@@ -1,7 +1,11 @@
 {
     "name": "gatsby-source-flotiq",
-    "version": "1.0.1",
-    "keywords": ["flotiq", "gatsby", "gatsby-plugin"],
+    "version": "1.0.2",
+    "keywords": [
+        "flotiq",
+        "gatsby",
+        "gatsby-plugin"
+    ],
     "dependencies": {
         "gatsby-core-utils": "^1.0.32",
         "node-fetch": "^2.6.0"

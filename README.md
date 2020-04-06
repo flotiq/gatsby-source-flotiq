@@ -30,7 +30,8 @@ module.exports = {
         "options": {
             "baseUrl": process.env.GATSBY_FLOTIQ_BASE_URL,
             "authToken": process.env.FLOTIQ_API_KEY,
-            "forceReload": false
+            "forceReload": false, //(optional)
+            "includeTypes": ['contettype1', 'contettype2', ... ] //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
         },
     },
   ],
