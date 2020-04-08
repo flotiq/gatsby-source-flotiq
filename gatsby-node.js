@@ -74,7 +74,9 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                 const json = await response.json();
                 await Promise.all(json.data.map(async datum => {
                     let nodeDatum = await createDatumDescription(ctd, datum, foreignReferenceMap);
-                    changed.push(ctd.name + '_' + datum.id);
+                    if(lastUpdate && lastUpdate.updated_at) {
+                        changed.push(ctd.name + '_' + datum.id);
+                    }
                     let oldNode = getNode(ctd.name + '_' + datum.id);
                     if (oldNode && oldNode.internal.owner === 'gatsby-source-flotiq') {
                         deleteNode(oldNode);
@@ -203,6 +205,31 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
                                     delete tmp.internal;
                                     datum[property][index][key][idx] = tmp;
                                 }
+                            } else {
+                                prop.flotiqInternal = prop.internal;
+                                delete prop.internal;
+                                await Promise.all(Object.keys(prop).map(async propInside => {
+                                    if(typeof prop[propInside][0] === 'object' && prop[propInside].length) {
+                                        await Promise.all(prop[propInside].map(async (propPropInside,i) => {
+                                            if (typeof propPropInside.dataUrl !== 'undefined') {
+                                                const response4 = await fetch(apiUrl + propPropInside.dataUrl + '?hydrate=1', {headers: headers});
+                                                if (response4.ok) {
+                                                    let tmp = await response4.json();
+                                                    tmp.flotiqInternal = tmp.internal;
+                                                    delete tmp.internal;
+                                                    datum[property][index][key][idx][propInside][i] = tmp;
+                                                }
+                                            }
+                                        }))
+                                    }
+                                }))
+                                if (typeof foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] === 'undefined') {
+                                    foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] = [];
+                                }
+                                foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id].push({
+                                    ctd: ctd.name,
+                                    id: datum.id
+                                });
                             }
                         }))
                     }));
@@ -219,11 +246,21 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
 
 const createTypeDefs = (contentTypesDefinitions) => {
     let typeDefs = '';
+    let additionalDefs = {};
     contentTypesDefinitions.forEach(ctd => {
         let tmpDef = '';
         Object.keys(ctd.schemaDefinition.allOf[1].properties).forEach(property => {
             tmpDef = tmpDef + `
-            ` + property + `: ` + getType(ctd.metaDefinition.propertiesConfig[property], ctd.schemaDefinition.required.indexOf(property) > -1)
+            ` + property + `: ` + getType(ctd.metaDefinition.propertiesConfig[property], ctd.schemaDefinition.required.indexOf(property) > -1, property, capitalize(ctd.name))
+            if(ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
+                additionalDefs[capitalize(property) + capitalize(ctd.name)] = '';
+                Object.keys(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig).forEach(prop => {
+                    additionalDefs[capitalize(property) + capitalize(ctd.name)] =  additionalDefs[capitalize(property) + capitalize(ctd.name)] + `
+                  ` + prop + `: ` + getType(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop], false, prop, capitalize(ctd.name))
+                });
+                additionalDefs[capitalize(property) + capitalize(ctd.name)] = additionalDefs[capitalize(property) + capitalize(ctd.name)] + `
+                        flotiqInternal: FlotiqInternal!`;
+            }
         });
 
         tmpDef = tmpDef + `
@@ -233,6 +270,11 @@ const createTypeDefs = (contentTypesDefinitions) => {
         type ` + capitalize(ctd.name) + ' implements Node {' + tmpDef + `
         }`;
     });
+    Object.keys(additionalDefs).forEach(typeName => {
+        typeDefs = typeDefs + `
+        type ` + typeName + ' {' + additionalDefs[typeName] + `
+        }`;
+    })
     typeDefinitionsDeferred.resolve(typeDefs);
 };
 
@@ -241,7 +283,7 @@ const capitalize = (s) => {
     return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-const getType = (propertyConfig, required) => {
+const getType = (propertyConfig, required, property, ctdName) => {
     switch (propertyConfig.inputType) {
         case 'text':
         case 'textarea':
@@ -256,5 +298,7 @@ const getType = (propertyConfig, required) => {
             return 'Boolean' + (required ? '!' : '');
         case 'datasource':
             return '[' + (propertyConfig.validation.relationContenttype !== '_media' ? capitalize(propertyConfig.validation.relationContenttype) : 'FlotiqGallery') + ']';
+        case 'object':
+            return '[' + capitalize(property) + ctdName + ']';
     }
 };
