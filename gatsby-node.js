@@ -196,42 +196,44 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
                 }
                 if (typeof datum[property][0][key] === 'object' && datum[property][0][key].length) {
                     await Promise.all(datum[property].map(async (dat, index) => {
-                        await Promise.all(datum[property][index][key].map(async (prop, idx) => {
-                            if (typeof prop.dataUrl !== 'undefined') {
-                                const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
-                                if (response2.ok) {
-                                    let tmp = await response2.json();
-                                    tmp.flotiqInternal = tmp.internal;
-                                    delete tmp.internal;
-                                    datum[property][index][key][idx] = tmp;
-                                }
-                            } else {
-                                prop.flotiqInternal = prop.internal;
-                                delete prop.internal;
-                                await Promise.all(Object.keys(prop).map(async propInside => {
-                                    if(typeof prop[propInside][0] === 'object' && prop[propInside].length) {
-                                        await Promise.all(prop[propInside].map(async (propPropInside,i) => {
-                                            if (typeof propPropInside.dataUrl !== 'undefined') {
-                                                const response4 = await fetch(apiUrl + propPropInside.dataUrl + '?hydrate=1', {headers: headers});
-                                                if (response4.ok) {
-                                                    let tmp = await response4.json();
-                                                    tmp.flotiqInternal = tmp.internal;
-                                                    delete tmp.internal;
-                                                    datum[property][index][key][idx][propInside][i] = tmp;
-                                                }
-                                            }
-                                        }))
+                        if (typeof datum[property][index][key] === 'object' && datum[property][index][key].length) {
+                            await Promise.all(datum[property][index][key].map(async (prop, idx) => {
+                                if (typeof prop.dataUrl !== 'undefined') {
+                                    const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
+                                    if (response2.ok) {
+                                        let tmp = await response2.json();
+                                        tmp.flotiqInternal = tmp.internal;
+                                        delete tmp.internal;
+                                        datum[property][index][key][idx] = tmp;
                                     }
-                                }))
-                                if (typeof foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] === 'undefined') {
-                                    foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] = [];
+                                } else {
+                                    prop.flotiqInternal = prop.internal;
+                                    delete prop.internal;
+                                    await Promise.all(Object.keys(prop).map(async propInside => {
+                                        if (typeof prop[propInside][0] === 'object' && prop[propInside].length) {
+                                            await Promise.all(prop[propInside].map(async (propPropInside, i) => {
+                                                if (typeof propPropInside.dataUrl !== 'undefined') {
+                                                    const response4 = await fetch(apiUrl + propPropInside.dataUrl + '?hydrate=1', {headers: headers});
+                                                    if (response4.ok) {
+                                                        let tmp = await response4.json();
+                                                        tmp.flotiqInternal = tmp.internal;
+                                                        delete tmp.internal;
+                                                        datum[property][index][key][idx][propInside][i] = tmp;
+                                                    }
+                                                }
+                                            }))
+                                        }
+                                    }))
+                                    if (typeof foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] === 'undefined') {
+                                        foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id] = [];
+                                    }
+                                    foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id].push({
+                                        ctd: ctd.name,
+                                        id: datum.id
+                                    });
                                 }
-                                foreignReferenceMap[prop.flotiqInternal.contentType + '_' + prop.id].push({
-                                    ctd: ctd.name,
-                                    id: datum.id
-                                });
-                            }
-                        }))
+                            }))
+                        }
                     }));
                 }
             }));
