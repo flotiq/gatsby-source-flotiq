@@ -200,7 +200,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
                     if (typeof datum[property][index][key] === 'object' && datum[property][index][key].length) {
                         await Promise.all(datum[property][index][key].map(async (prop, idx) => {
                             if (typeof prop.dataUrl !== 'undefined') {
-                                datum[property][index][key][idx] = await getSimpleResponse(prop);
+                                datum[property][index][key][idx] = await fetchReference(prop);
                             } else {
                                 prop.flotiqInternal = prop.internal;
                                 delete prop.internal;
@@ -208,7 +208,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
                                     if (typeof prop[propInside][0] === 'object' && prop[propInside].length) {
                                         await Promise.all(prop[propInside].map(async (propPropInside, i) => {
                                             if (typeof propPropInside.dataUrl !== 'undefined') {
-                                                datum[property][index][key][idx][propInside][i] = await getSimpleResponse(propPropInside);
+                                                datum[property][index][key][idx][propInside][i] = await fetchReference(propPropInside);
                                             }
                                         }))
                                     }
@@ -235,7 +235,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
     return description;
 };
 
-const getSimpleResponse = async (prop) => {
+const fetchReference = async (prop) => {
     const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
     if (response2.ok) {
         let tmp = await response2.json();
