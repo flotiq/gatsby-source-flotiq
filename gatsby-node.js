@@ -79,7 +79,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     }
                     let oldNode = getNode(ctd.name + '_' + datum.id);
                     if (oldNode && oldNode.internal.owner === 'gatsby-source-flotiq') {
-                        deleteNode(oldNode);
+                        //deleteNode(oldNode);
                     }
 
                     return createNode({
