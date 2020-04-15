@@ -175,7 +175,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
     let description = {};
 
     await Promise.all(Object.keys(ctd.schemaDefinition.allOf[1].properties).map(async property => {
-        if (typeof datum[property] === 'object' && datum[property].length) {
+        if (Array.isArray(datum[property])) {
             await Promise.all(datum[property].map(async (dat, index) => {
                 await Promise.all(Object.keys(datum[property][index]).map(async key => {
                     if (key === 'internal') {
