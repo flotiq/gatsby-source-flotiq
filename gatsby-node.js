@@ -175,52 +175,56 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
     let description = {};
 
     await Promise.all(Object.keys(ctd.schemaDefinition.allOf[1].properties).map(async property => {
-        if (typeof datum[property] === 'object' && datum[property].length) {
-            await Promise.all(Object.keys(datum[property][0]).map(async key => {
-                if (key === 'internal') {
-                    datum[property][0]['flotiqInternal'] = datum[property][0]['internal'];
-                    delete datum[property][0]['internal'];
-                }
-                if (key === 'id') {
-                    let foreignReferenceId = datum[property][0]['internal']['contentType'] + '_' + datum[property][0]['id'];
-                    if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
-                        foreignReferenceMap[foreignReferenceId] = [];
+        if (Array.isArray(datum[property])) {
+            await Promise.all(datum[property].map(async (dat, index) => {
+                await Promise.all(Object.keys(datum[property][index]).map(async key => {
+                    if (key === 'internal') {
+                        datum[property][index]['flotiqInternal'] = datum[property][index]['internal'];
+                        delete datum[property][index]['internal'];
                     }
-                    if (!foreignReferenceMap[foreignReferenceId].find((el) => {
-                        return el.ctd === ctd.name && el.id === datum.id;
-                    })) {
-                        foreignReferenceMap[foreignReferenceId].push({
-                            ctd: ctd.name,
-                            id: datum.id
-                        });
+                    if (key === 'id') {
+                        let foreignReferenceId = datum[property][index]['internal']['contentType'] + '_' + datum[property][index]['id'];
+                        if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
+                            foreignReferenceMap[foreignReferenceId] = [];
+                        }
+                        if (!foreignReferenceMap[foreignReferenceId].find((el) => {
+                            return el.ctd === ctd.name && el.id === datum.id;
+                        })) {
+                            foreignReferenceMap[foreignReferenceId].push({
+                                ctd: ctd.name,
+                                id: datum.id
+                            });
+                        }
                     }
-                }
 
-                await Promise.all(datum[property].map(async (dat, index) => {
+
                     if (typeof datum[property][index][key] === 'object' && datum[property][index][key].length) {
                         await Promise.all(datum[property][index][key].map(async (prop, idx) => {
                             if (typeof prop.dataUrl !== 'undefined') {
                                 datum[property][index][key][idx] = await fetchReference(prop);
                             } else {
-                                prop.flotiqInternal = prop.internal;
-                                delete prop.internal;
                                 await Promise.all(Object.keys(prop).map(async propInside => {
-                                    if (typeof prop[propInside][0] === 'object' && prop[propInside].length) {
+                                    if (Array.isArray(prop[propInside])) {
                                         await Promise.all(prop[propInside].map(async (propPropInside, i) => {
                                             if (typeof propPropInside.dataUrl !== 'undefined') {
                                                 datum[property][index][key][idx][propInside][i] = await fetchReference(propPropInside);
+                                                let foreignReferenceId = datum[property][index][key][idx][propInside][i].flotiqInternal.contentType + '_' + datum[property][index][key][idx][propInside][i].id;
+                                                if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
+                                                    foreignReferenceMap[foreignReferenceId] = [];
+                                                }
+                                                foreignReferenceMap[foreignReferenceId].push({
+                                                    ctd: ctd.name,
+                                                    id: datum.id
+                                                });
                                             }
                                         }))
+                                    } else {
+                                        if (propInside === 'internal') {
+                                            datum[property][index][key][idx].flotiqInternal = datum[property][index][key][idx].internal;
+                                            delete datum[property][index][key][idx].internal;
+                                        }
                                     }
                                 }));
-                                let foreignReferenceId = prop.flotiqInternal.contentType + '_' + prop.id;
-                                if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
-                                    foreignReferenceMap[foreignReferenceId] = [];
-                                }
-                                foreignReferenceMap[foreignReferenceId].push({
-                                    ctd: ctd.name,
-                                    id: datum.id
-                                });
                             }
                         }))
                     }
