@@ -14,7 +14,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
 });
 
 exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
-    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
+    const {createNode, setPluginStatus, touchNode} = actions;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
@@ -76,10 +76,6 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     let nodeDatum = await createDatumDescription(ctd, datum, foreignReferenceMap);
                     if(lastUpdate && lastUpdate.updated_at) {
                         changed.push(ctd.name + '_' + datum.id);
-                    }
-                    let oldNode = getNode(ctd.name + '_' + datum.id);
-                    if (oldNode && oldNode.internal.owner === 'gatsby-source-flotiq') {
-                        //deleteNode(oldNode);
                     }
 
                     return createNode({
