@@ -13,7 +13,8 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
     typeDefinitionsDeferred = {resolve: resolve, reject: reject};
 });
 
-exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
+exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, 
+                            {baseUrl, authToken, forceReload, hydrate=1, objectLimit=100000, timeout=5000, includeTypes = null}) => {
     const {createNode, setPluginStatus, touchNode} = actions;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
@@ -29,7 +30,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
     }
     let foreignReferenceMap = {};
 
-    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?internal=false&limit=10000&order_by=label', {headers: headers});
+    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?internal=false&limit=' + objectLimit + '&order_by=label', {headers: headers, timeout:timeout});
 
     if (contentTypeDefinitionsResponse.ok) {
         if (forceReload || process.env.NODE_ENV === 'production') {
@@ -56,7 +57,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         let count = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
 
-            let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000';
+            let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=' + hydrate + '&limit=' + objectLimit;
             let changed = [];
 
             if(lastUpdate && lastUpdate.updated_at) {
@@ -67,7 +68,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     }
                 }))
             }
-            let response = await fetch(url, {headers: headers});
+            let response = await fetch(url, {headers: headers, timeout:timeout});
             reporter.info(`Fetching content type ${ctd.name}: ${url}`);
 
             if (response.ok) {
@@ -103,7 +104,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     await Promise.all(changed.map(async change => {
                         if (typeof foreignReferenceMap !== 'undefined' && typeof foreignReferenceMap[change] !== 'undefined') {
                             await Promise.all(foreignReferenceMap[change].map(async id => {
-                                let response3 = await fetch(apiUrl + '/api/v1/content/' + id.ctd + '/' + id.id + '?hydrate=1', {headers: headers});
+                                let response3 = await fetch(apiUrl + '/api/v1/content/' + id.ctd + '/' + id.id + '?hydrate=' + hydrate, {headers: headers, timeout:timeout});
                                 if (response3.ok) {
                                     const json3 = await response3.json();
                                     changed2.push(id.ctd + '_' + json3.id);
@@ -236,7 +237,7 @@ let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
 };
 
 const fetchReference = async (prop) => {
-    const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
+    const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=' + hydrate, {headers: headers, timeout:timeout});
     if (response2.ok) {
         let tmp = await response2.json();
         tmp.flotiqInternal = tmp.internal;
