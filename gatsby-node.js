@@ -207,7 +207,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                 type: '[' + type + ']',
                 resolve: async (source, args, context, info) => {
                     if (source[property]) {
-                        return await Promise.all(source[property].map(async (prop) => {
+                        let nodes = await Promise.all(source[property].map(async (prop) => {
                             let node = {
                                 id: typeNonCapitalize === '_media' ?
                                     prop.dataUrl.split('/')[5] : typeNonCapitalize + '_' + prop.dataUrl.split('/')[5],
@@ -241,6 +241,10 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return nodeModel
                             }
                         }));
+                        if(!nodes[0]) {
+                            return [];
+                        }
+                        return nodes;
                     }
                     return null;
                 }
