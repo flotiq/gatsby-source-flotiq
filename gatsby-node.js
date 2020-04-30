@@ -13,8 +13,25 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
     typeDefinitionsDeferred = {resolve: resolve, reject: reject};
 });
 
-exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter, schema}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
+let createNodeGlobal;
+let resolveMissingRelationsGlobal;
+
+exports.sourceNodes = async (gatsbyFunctions, options) => {
+
+    const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
     const {createNode, setPluginStatus, touchNode} = actions;
+    const {
+        baseUrl,
+        authToken,
+        forceReload,
+        objectLimit = 100000,
+        timeout = 5000,
+        includeTypes = null,
+        resolveMissingRelations = true
+    } = options;
+
+    createNodeGlobal = createNode;
+    resolveMissingRelationsGlobal = resolveMissingRelations;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
@@ -28,7 +45,10 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
 
-    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label', {headers: headers});
+    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label', {
+        headers: headers,
+        timeout: timeout
+    });
 
     if (contentTypeDefinitionsResponse.ok) {
         if (forceReload || process.env.NODE_ENV === 'production') {
@@ -36,7 +56,8 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
-        const contentTypeDefsData = contentTypeDefinitions.data.filter(contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
+        const contentTypeDefsData = contentTypeDefinitions.data.filter(
+            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
@@ -49,7 +70,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         let changed = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
 
-            let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=100000';
+            let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + objectLimit;
 
 
             if (lastUpdate && lastUpdate.updated_at) {
@@ -60,7 +81,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     }
                 }))
             }
-            let response = await fetch(url, {headers: headers});
+            let response = await fetch(url, {headers: headers, timeout: timeout});
             reporter.info(`Fetching content type ${ctd.name}: ${url}`);
 
             if (response.ok) {
@@ -88,20 +109,23 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         }));
         reporter.info('Updated entries ' + changed);
 
-        setPluginStatus({'updated_at': (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
+        setPluginStatus({'updated_at':
+                (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
 
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
-            reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url (in most cases it is "https://api.flotiq.com")');
+            reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url ' +
+                '(in most cases it is "https://api.flotiq.com")');
         }
         if (contentTypeDefinitionsResponse.status === 403) {
-            reporter.panic('FLOTIQ: We couldn\'t authorize you in API. Check if you specified correct API token (if you don\'t know what it is check: https://flotiq.com/docs/API/)');
+            reporter.panic('FLOTIQ: We couldn\'t authorize you in API. Check if you specified correct API token ' +
+                '(if you don\'t know what it is check: https://flotiq.com/docs/API/)');
         }
     }
     return {};
 };
 
-exports.createSchemaCustomization = ({actions, schema}) => {
+exports.createSchemaCustomization = ({actions}) => {
     const {createTypes} = actions;
 
     typeDefinitionsPromise.then(typeDefs => {
@@ -138,7 +162,12 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
                     interfaces: ["Node"],
                 };
                 Object.keys(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig).forEach(prop => {
-                    additionalDef.fields[prop] = getType(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop], false, prop, capitalize(ctd.name));
+                    additionalDef.fields[prop] = getType(
+                        ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop],
+                        false,
+                        prop,
+                        capitalize(ctd.name)
+                    );
                 });
                 additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
                 typeDefs.push(schema.buildObjectType(additionalDef));
@@ -170,18 +199,50 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'datasource':
-            let type = (propertyConfig.validation.relationContenttype !== '_media' ? capitalize(propertyConfig.validation.relationContenttype) : '_media');
-            let typeNonCapitalize = (propertyConfig.validation.relationContenttype !== '_media' ? propertyConfig.validation.relationContenttype : '_media');
+            let type = (propertyConfig.validation.relationContenttype !== '_media' ?
+                capitalize(propertyConfig.validation.relationContenttype) : '_media');
+            let typeNonCapitalize = (propertyConfig.validation.relationContenttype !== '_media' ?
+                propertyConfig.validation.relationContenttype : '_media');
             return {
                 type: '[' + type + ']',
-                resolve: (source, args, context, info) => {
-                    return source[property].map((prop) => {
-                        let node = {
-                            id: typeNonCapitalize === '_media' ? prop.dataUrl.split('/')[5] : typeNonCapitalize + '_' + prop.dataUrl.split('/')[5],
-                            type: type,
-                        };
-                        return context.nodeModel.getNodeById(node)
-                    });
+                resolve: async (source, args, context, info) => {
+                    if (source[property]) {
+                        return source[property].map(async (prop) => {
+                            let node = {
+                                id: typeNonCapitalize === '_media' ?
+                                    prop.dataUrl.split('/')[5] : typeNonCapitalize + '_' + prop.dataUrl.split('/')[5],
+                                type: type,
+                            };
+                            let nodeModel = context.nodeModel.getNodeById(node);
+                            if (nodeModel === null && resolveMissingRelationsGlobal) {
+                                let url = apiUrl + prop.dataUrl;
+                                let response = await fetch(url, {headers: headers});
+                                if (response.ok) {
+                                    const json = await response.json();
+                                    await createNodeGlobal({
+                                        ...json,
+                                        // custom
+                                        flotiqInternal: json.internal,
+                                        // required
+                                        id: typeNonCapitalize === '_media' ? json.id : typeNonCapitalize + '_' + json.id,
+                                        parent: null,
+                                        children: [],
+                                        internal: {
+                                            type: capitalize(typeNonCapitalize),
+                                            contentDigest: digest(JSON.stringify(json)),
+                                        },
+                                    });
+                                    nodeModel = context.nodeModel.getNodeById(node);
+                                    return nodeModel;
+                                } else {
+                                    return nodeModel;
+                                }
+                            } else {
+                                return nodeModel
+                            }
+                        });
+                    }
+                    return null;
                 }
             };
         case 'object':

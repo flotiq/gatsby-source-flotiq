@@ -26,12 +26,15 @@ module.exports = {
   // ...
   plugins: [
     {
-      "resolve": "gatsby-source-flotiq",		  
-        "options": {
-            "baseUrl": process.env.GATSBY_FLOTIQ_BASE_URL,
-            "authToken": process.env.FLOTIQ_API_KEY,
-            "forceReload": false, //(optional)
-            "includeTypes": ['contettype1', 'contettype2', ... ] //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
+      resolve: "gatsby-source-flotiq",		  
+        options: {
+            baseUrl: process.env.GATSBY_FLOTIQ_BASE_URL,
+            authToken: process.env.FLOTIQ_API_KEY,
+            forceReload: false, //(optional)
+            includeTypes: ['contettype1', 'contettype2', ... ], //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
+            objectLimit: 100000, //optional, limit number of objects for every type
+            timeout: 5000, //optional
+            resolveMissingRelations: true //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
         },
     },
   ],
