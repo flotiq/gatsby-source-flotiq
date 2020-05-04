@@ -14,7 +14,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
 });
 
 exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
-    const {createNode, setPluginStatus, touchNode} = actions;
+    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
@@ -54,6 +54,7 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         createTypeDefs(contentTypeDefsData);
 
         let count = 0;
+        let removed = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
 
             let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000';
@@ -96,6 +97,19 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
             } else {
                 reporter.warn('Error fetching data', response);
             }
+            if(lastUpdate && lastUpdate.updated_at) {
+                url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(lastUpdate.updated_at);
+                response = await fetch(url, {headers: headers});
+                reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
+                if (response.ok) {
+                    const jsonRemoved = await response.json();
+                    await Promise.all(jsonRemoved.map(async id => {
+                        removed++;
+                        let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
+                        return deleteNode({node: node});
+                    }));
+                }
+            }
             if (!forceReload) {
                 while (changed.length) {
                     count += changed.length;
@@ -132,6 +146,9 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
         }));
         if (count) {
             reporter.info('Updated entries ' + count);
+        }
+        if(removed) {
+            reporter.info('Removed entries ' + removed);
         }
         setPluginStatus({'updated_at': (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
         await cache.set('flotiqForeignReferenceMap', foreignReferenceMap);
