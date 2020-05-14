@@ -68,6 +68,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         createTypeDefs(contentTypeDefsData, schema);
 
         let changed = 0;
+        let removed = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
 
             let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + objectLimit;
@@ -106,12 +107,61 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             } else {
                 reporter.warn('Error fetching data', response);
             }
-        }));
-        reporter.info('Updated entries ' + changed);
+            if(lastUpdate && lastUpdate.updated_at) {
+                url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(lastUpdate.updated_at);
+                response = await fetch(url, {headers: headers});
+                reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
+                if (response.ok) {
+                    const jsonRemoved = await response.json();
+                    await Promise.all(jsonRemoved.map(async id => {
+                        removed++;
+                        let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
+                        return deleteNode({node: node});
+                    }));
+                }
+            }
+            if (!forceReload) {
+                while (changed.length) {
+                    count += changed.length;
+                    let changed2 = [];
+                    await Promise.all(changed.map(async change => {
+                        if (typeof foreignReferenceMap !== 'undefined' && typeof foreignReferenceMap[change] !== 'undefined') {
+                            await Promise.all(foreignReferenceMap[change].map(async id => {
+                                let response3 = await fetch(apiUrl + '/api/v1/content/' + id.ctd + '/' + id.id + '?hydrate=1', {headers: headers});
+                                if (response3.ok) {
+                                    const json3 = await response3.json();
+                                    changed2.push(id.ctd + '_' + json3.id);
 
+                                    let nodeDatum3 = await createDatumDescription(contentTypeDefsData.filter(d => d.name === id.ctd)[0], json3, foreignReferenceMap);
+                                    return createNode({
+                                        ...nodeDatum3,
+                                        // custom
+                                        flotiqInternal: json3.internal,
+                                        // required
+                                        id: id.ctd + '_' + json3.id,
+                                        parent: null,
+                                        children: [],
+                                        internal: {
+                                            type: capitalize(id.ctd),
+                                            contentDigest: digest(JSON.stringify(json3)),
+                                        },
+                                    });
+                                }
+                            }))
+                        }
+                    }));
+                    changed = changed2;
+                }
+            }
+        }));
+        if (changed) {
+            reporter.info('Updated entries ' + changed);
+        }
+        if(removed) {
+            reporter.info('Removed entries ' + removed);
+        }
         setPluginStatus({'updated_at':
                 (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
-
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
             reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url ' +
