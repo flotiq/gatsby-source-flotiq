@@ -35,20 +35,24 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
-        reporter.panic('FLOTIQ: You must specify API url (in most cases it is "https://api.flotiq.com")');
+        reporter.panic('FLOTIQ: You must specify API url ' +
+            '(in most cases it is "https://api.flotiq.com")');
     }
     if (!authToken) {
-        reporter.panic("FLOTIQ: You must specify API token (if you don't know what it is check: https://flotiq.com/docs/API/)");
+        reporter.panic("FLOTIQ: You must specify API token " +
+            "(if you don't know what it is check: https://flotiq.com/docs/API/)");
     }
 
     if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
         reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
 
-    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label', {
-        headers: headers,
-        timeout: timeout
-    });
+    let contentTypeDefinitionsResponse = await fetch(
+        apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
+        {
+            headers: headers,
+            timeout: timeout
+        });
 
     if (contentTypeDefinitionsResponse.ok) {
         if (forceReload || process.env.NODE_ENV === 'production') {
@@ -70,9 +74,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         let changed = 0;
         let removed = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
-
             let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + objectLimit;
-
 
             if (lastUpdate && lastUpdate.updated_at) {
                 url += '&filters=' + encodeURIComponent(JSON.stringify({
@@ -118,39 +120,6 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
                         let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
                         return deleteNode({node: node});
                     }));
-                }
-            }
-            if (!forceReload) {
-                while (changed.length) {
-                    count += changed.length;
-                    let changed2 = [];
-                    await Promise.all(changed.map(async change => {
-                        if (typeof foreignReferenceMap !== 'undefined' && typeof foreignReferenceMap[change] !== 'undefined') {
-                            await Promise.all(foreignReferenceMap[change].map(async id => {
-                                let response3 = await fetch(apiUrl + '/api/v1/content/' + id.ctd + '/' + id.id + '?hydrate=1', {headers: headers});
-                                if (response3.ok) {
-                                    const json3 = await response3.json();
-                                    changed2.push(id.ctd + '_' + json3.id);
-
-                                    let nodeDatum3 = await createDatumDescription(contentTypeDefsData.filter(d => d.name === id.ctd)[0], json3, foreignReferenceMap);
-                                    return createNode({
-                                        ...nodeDatum3,
-                                        // custom
-                                        flotiqInternal: json3.internal,
-                                        // required
-                                        id: id.ctd + '_' + json3.id,
-                                        parent: null,
-                                        children: [],
-                                        internal: {
-                                            type: capitalize(id.ctd),
-                                            contentDigest: digest(JSON.stringify(json3)),
-                                        },
-                                    });
-                                }
-                            }))
-                        }
-                    }));
-                    changed = changed2;
                 }
             }
         }));
