@@ -13,54 +13,70 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
     typeDefinitionsDeferred = {resolve: resolve, reject: reject};
 });
 
-exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter}, {baseUrl, authToken, forceReload, includeTypes = null}) => {
-    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
+let createNodeGlobal;
+let resolveMissingRelationsGlobal;
+
+exports.sourceNodes = async (gatsbyFunctions, options) => {
+
+    const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
+    const {createNode, setPluginStatus, touchNode} = actions;
+    const {
+        baseUrl,
+        authToken,
+        forceReload,
+        objectLimit = 100000,
+        timeout = 5000,
+        includeTypes = null,
+        resolveMissingRelations = true
+    } = options;
+
+    createNodeGlobal = createNode;
+    resolveMissingRelationsGlobal = resolveMissingRelations;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
-        reporter.panic('FLOTIQ: You must specify API url (in most cases it is "https://api.flotiq.com")');
+        reporter.panic('FLOTIQ: You must specify API url ' +
+            '(in most cases it is "https://api.flotiq.com")');
     }
     if (!authToken) {
-        reporter.panic("FLOTIQ: You must specify API token (if you don't know what it is check: https://flotiq.com/docs/API/)");
+        reporter.panic("FLOTIQ: You must specify API token " +
+            "(if you don't know what it is check: https://flotiq.com/docs/API/)");
     }
 
     if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
         reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
-    let foreignReferenceMap = {};
 
-    let contentTypeDefinitionsResponse = await fetch(apiUrl + '/api/v1/internal/contenttype?internal=false&limit=10000&order_by=label', {headers: headers});
+    let contentTypeDefinitionsResponse = await fetch(
+        apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
+        {
+            headers: headers,
+            timeout: timeout
+        });
 
     if (contentTypeDefinitionsResponse.ok) {
         if (forceReload || process.env.NODE_ENV === 'production') {
             setPluginStatus({'updated_at': null});
-        } else {
-            foreignReferenceMap = await cache.get('flotiqForeignReferenceMap');
-            if (!foreignReferenceMap) {
-                foreignReferenceMap = {};
-            }
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
-        const contentTypeDefsData = contentTypeDefinitions.data.filter(contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
+        const contentTypeDefsData = contentTypeDefinitions.data.filter(
+            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
         existingNodes.forEach(n => touchNode({nodeId: n.id, plugin: 'gatsby-source-flotiq'}));
         if (!existingNodes.length) {
             lastUpdate = undefined;
-            foreignReferenceMap = {};
         }
-        createTypeDefs(contentTypeDefsData);
+        createTypeDefs(contentTypeDefsData, schema);
 
-        let count = 0;
+        let changed = 0;
         let removed = 0;
         await Promise.all(contentTypeDefsData.map(async ctd => {
+            let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + objectLimit;
 
-            let url = apiUrl + '/api/v1/content/' + ctd.name + '?hydrate=1&limit=100000';
-            let changed = [];
-
-            if(lastUpdate && lastUpdate.updated_at) {
+            if (lastUpdate && lastUpdate.updated_at) {
                 url += '&filters=' + encodeURIComponent(JSON.stringify({
                     "internal.updatedAt": {
                         "type": "greaterThan",
@@ -68,23 +84,19 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     }
                 }))
             }
-            let response = await fetch(url, {headers: headers});
+            let response = await fetch(url, {headers: headers, timeout: timeout});
             reporter.info(`Fetching content type ${ctd.name}: ${url}`);
 
             if (response.ok) {
                 const json = await response.json();
                 await Promise.all(json.data.map(async datum => {
-                    let nodeDatum = await createDatumDescription(ctd, datum, foreignReferenceMap);
-                    if(lastUpdate && lastUpdate.updated_at) {
-                        changed.push(ctd.name + '_' + datum.id);
-                    }
-
+                    changed++;
                     return createNode({
-                        ...nodeDatum,
+                        ...datum,
                         // custom
                         flotiqInternal: datum.internal,
                         // required
-                        id: ctd.name + '_' + datum.id,
+                        id: ctd.name === '_media' ? datum.id : ctd.name + '_' + datum.id,
                         parent: null,
                         children: [],
                         internal: {
@@ -110,54 +122,23 @@ exports.sourceNodes = async ({actions, store, getNodes, getNode, cache, reporter
                     }));
                 }
             }
-            if (!forceReload) {
-                while (changed.length) {
-                    count += changed.length;
-                    let changed2 = [];
-                    await Promise.all(changed.map(async change => {
-                        if (typeof foreignReferenceMap !== 'undefined' && typeof foreignReferenceMap[change] !== 'undefined') {
-                            await Promise.all(foreignReferenceMap[change].map(async id => {
-                                let response3 = await fetch(apiUrl + '/api/v1/content/' + id.ctd + '/' + id.id + '?hydrate=1', {headers: headers});
-                                if (response3.ok) {
-                                    const json3 = await response3.json();
-                                    changed2.push(id.ctd + '_' + json3.id);
-
-                                    let nodeDatum3 = await createDatumDescription(contentTypeDefsData.filter(d => d.name === id.ctd)[0], json3, foreignReferenceMap);
-                                    return createNode({
-                                        ...nodeDatum3,
-                                        // custom
-                                        flotiqInternal: json3.internal,
-                                        // required
-                                        id: id.ctd + '_' + json3.id,
-                                        parent: null,
-                                        children: [],
-                                        internal: {
-                                            type: capitalize(id.ctd),
-                                            contentDigest: digest(JSON.stringify(json3)),
-                                        },
-                                    });
-                                }
-                            }))
-                        }
-                    }));
-                    changed = changed2;
-                }
-            }
         }));
-        if (count) {
-            reporter.info('Updated entries ' + count);
+        if (changed) {
+            reporter.info('Updated entries ' + changed);
         }
         if(removed) {
             reporter.info('Removed entries ' + removed);
         }
-        setPluginStatus({'updated_at': (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
-        await cache.set('flotiqForeignReferenceMap', foreignReferenceMap);
+        setPluginStatus({'updated_at':
+                (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
-            reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url (in most cases it is "https://api.flotiq.com")');
+            reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url ' +
+                '(in most cases it is "https://api.flotiq.com")');
         }
         if (contentTypeDefinitionsResponse.status === 403) {
-            reporter.panic('FLOTIQ: We couldn\'t authorize you in API. Check if you specified correct API token (if you don\'t know what it is check: https://flotiq.com/docs/API/)');
+            reporter.panic('FLOTIQ: We couldn\'t authorize you in API. Check if you specified correct API token ' +
+                '(if you don\'t know what it is check: https://flotiq.com/docs/API/)');
         }
     }
     return {};
@@ -167,134 +148,53 @@ exports.createSchemaCustomization = ({actions}) => {
     const {createTypes} = actions;
 
     typeDefinitionsPromise.then(typeDefs => {
-        typeDefs = typeDefs + `
-            type FlotiqGallery {
-              id: String
-              extension: String
-            }
-            type FlotiqInternal {
-              createdAt: String!
-              deletedAt: String!
-              updatedAt: String!
-              contentType: String!
-            }
-        `;
+        typeDefs.push(`type FlotiqInternal {
+          createdAt: String!
+          deletedAt: String!
+          updatedAt: String!
+          contentType: String!
+        }`);
         createTypes(typeDefs);
     })
 
 };
 
-let createDatumDescription = async (ctd, datum, foreignReferenceMap) => {
-    let description = {};
-
-    await Promise.all(Object.keys(ctd.schemaDefinition.allOf[1].properties).map(async property => {
-        if (Array.isArray(datum[property])) {
-            await Promise.all(datum[property].map(async (dat, index) => {
-                await Promise.all(Object.keys(datum[property][index]).map(async key => {
-                    if (key === 'internal') {
-                        datum[property][index]['flotiqInternal'] = datum[property][index]['internal'];
-                        delete datum[property][index]['internal'];
-                    }
-                    if (key === 'id') {
-                        let foreignReferenceId = datum[property][index]['internal']['contentType'] + '_' + datum[property][index]['id'];
-                        if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
-                            foreignReferenceMap[foreignReferenceId] = [];
-                        }
-                        if (!foreignReferenceMap[foreignReferenceId].find((el) => {
-                            return el.ctd === ctd.name && el.id === datum.id;
-                        })) {
-                            foreignReferenceMap[foreignReferenceId].push({
-                                ctd: ctd.name,
-                                id: datum.id
-                            });
-                        }
-                    }
-
-
-                    if (typeof datum[property][index][key] === 'object' && datum[property][index][key].length) {
-                        await Promise.all(datum[property][index][key].map(async (prop, idx) => {
-                            if (typeof prop.dataUrl !== 'undefined') {
-                                datum[property][index][key][idx] = await fetchReference(prop);
-                            } else {
-                                await Promise.all(Object.keys(prop).map(async propInside => {
-                                    if (Array.isArray(prop[propInside])) {
-                                        await Promise.all(prop[propInside].map(async (propPropInside, i) => {
-                                            if (typeof propPropInside.dataUrl !== 'undefined') {
-                                                datum[property][index][key][idx][propInside][i] = await fetchReference(propPropInside);
-                                                let foreignReferenceId = datum[property][index][key][idx][propInside][i].flotiqInternal.contentType + '_' + datum[property][index][key][idx][propInside][i].id;
-                                                if (typeof foreignReferenceMap[foreignReferenceId] === 'undefined') {
-                                                    foreignReferenceMap[foreignReferenceId] = [];
-                                                }
-                                                foreignReferenceMap[foreignReferenceId].push({
-                                                    ctd: ctd.name,
-                                                    id: datum.id
-                                                });
-                                            }
-                                        }))
-                                    } else {
-                                        if (propInside === 'internal') {
-                                            datum[property][index][key][idx].flotiqInternal = datum[property][index][key][idx].internal;
-                                            delete datum[property][index][key][idx].internal;
-                                        }
-                                    }
-                                }));
-                            }
-                        }))
-                    }
-                }));
-            }));
-        }
-
-        description[property] = datum[property];
-
-    }));
-
-    return description;
-};
-
-const fetchReference = async (prop) => {
-    const response2 = await fetch(apiUrl + prop.dataUrl + '?hydrate=1', {headers: headers});
-    if (response2.ok) {
-        let tmp = await response2.json();
-        tmp.flotiqInternal = tmp.internal;
-        delete tmp.internal;
-        return tmp;
-    } else {
-        return prop;
-    }
-};
-
-const createTypeDefs = (contentTypesDefinitions) => {
-    let typeDefs = '';
-    let additionalDefs = {};
+const createTypeDefs = (contentTypesDefinitions, schema) => {
+    let typeDefs = [];
     contentTypesDefinitions.forEach(ctd => {
-        let tmpDef = '';
+        let tmpDef = {
+            name: capitalize(ctd.name),
+            fields: {},
+            interfaces: ["Node"],
+        };
         Object.keys(ctd.schemaDefinition.allOf[1].properties).forEach(property => {
-            tmpDef += `
-            ${property}: ${getType(ctd.metaDefinition.propertiesConfig[property], ctd.schemaDefinition.required.indexOf(property) > -1, property, capitalize(ctd.name))}`;
-            if(ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
-                let additionalDefId = capitalize(property) + capitalize(ctd.name);
-                additionalDefs[additionalDefId] = '';
+            tmpDef.fields[property] = getType(
+                ctd.metaDefinition.propertiesConfig[property],
+                ctd.schemaDefinition.required.indexOf(property) > -1,
+                property,
+                capitalize(ctd.name)
+            );
+            if (ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
+                let additionalDef = {
+                    name: capitalize(property) + capitalize(ctd.name),
+                    fields: {},
+                    interfaces: ["Node"],
+                };
                 Object.keys(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig).forEach(prop => {
-                    additionalDefs[additionalDefId] +=  `
-                    ${prop}: ${getType(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop], false, prop, capitalize(ctd.name))}`;
+                    additionalDef.fields[prop] = getType(
+                        ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop],
+                        false,
+                        prop,
+                        capitalize(ctd.name)
+                    );
                 });
-                additionalDefs[additionalDefId] = `${additionalDefs[additionalDefId]} 
-                        flotiqInternal: FlotiqInternal!`;
+                additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
+                typeDefs.push(schema.buildObjectType(additionalDef));
             }
         });
 
-        tmpDef += `
-            flotiqInternal: FlotiqInternal!`;
-
-        typeDefs += `
-        type ${capitalize(ctd.name)} implements Node { ${tmpDef}
-        }`;
-    });
-    Object.keys(additionalDefs).forEach(typeName => {
-        typeDefs += `
-        type ${typeName} { ${additionalDefs[typeName]}
-        }`;
+        tmpDef.fields.flotiqInternal = `FlotiqInternal!`;
+        typeDefs.push(schema.buildObjectType(tmpDef));
     });
     typeDefinitionsDeferred.resolve(typeDefs);
 };
@@ -318,7 +218,56 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'datasource':
-            return '[' + (propertyConfig.validation.relationContenttype !== '_media' ? capitalize(propertyConfig.validation.relationContenttype) : 'FlotiqGallery') + ']';
+            let type = (propertyConfig.validation.relationContenttype !== '_media' ?
+                capitalize(propertyConfig.validation.relationContenttype) : '_media');
+            let typeNonCapitalize = (propertyConfig.validation.relationContenttype !== '_media' ?
+                propertyConfig.validation.relationContenttype : '_media');
+            return {
+                type: '[' + type + ']',
+                resolve: async (source, args, context, info) => {
+                    if (source[property]) {
+                        let nodes = await Promise.all(source[property].map(async (prop) => {
+                            let node = {
+                                id: typeNonCapitalize === '_media' ?
+                                    prop.dataUrl.split('/')[5] : typeNonCapitalize + '_' + prop.dataUrl.split('/')[5],
+                                type: type,
+                            };
+                            let nodeModel = context.nodeModel.getNodeById(node);
+                            if (nodeModel === null && resolveMissingRelationsGlobal) {
+                                let url = apiUrl + prop.dataUrl;
+                                let response = await fetch(url, {headers: headers});
+                                if (response.ok) {
+                                    const json = await response.json();
+                                    await createNodeGlobal({
+                                        ...json,
+                                        // custom
+                                        flotiqInternal: json.internal,
+                                        // required
+                                        id: typeNonCapitalize === '_media' ? json.id : typeNonCapitalize + '_' + json.id,
+                                        parent: null,
+                                        children: [],
+                                        internal: {
+                                            type: capitalize(typeNonCapitalize),
+                                            contentDigest: digest(JSON.stringify(json)),
+                                        },
+                                    });
+                                    nodeModel = context.nodeModel.getNodeById(node);
+                                    return nodeModel;
+                                } else {
+                                    return nodeModel;
+                                }
+                            } else {
+                                return nodeModel
+                            }
+                        }));
+                        if(!nodes[0]) {
+                            return [];
+                        }
+                        return nodes;
+                    }
+                    return null;
+                }
+            };
         case 'object':
             return '[' + capitalize(property) + ctdName + ']';
     }
