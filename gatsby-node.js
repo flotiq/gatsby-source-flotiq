@@ -19,7 +19,7 @@ let resolveMissingRelationsGlobal;
 exports.sourceNodes = async (gatsbyFunctions, options) => {
 
     const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
-    const {createNode, setPluginStatus, touchNode} = actions;
+    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     const {
         baseUrl,
         authToken,
