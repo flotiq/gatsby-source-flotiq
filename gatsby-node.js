@@ -55,7 +55,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         });
 
     if (contentTypeDefinitionsResponse.ok) {
-        if (forceReload || process.env.NODE_ENV === 'production') {
+        if (forceReload) {
             setPluginStatus({'updated_at': null});
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
