@@ -1,4 +1,11 @@
-# gatsby-source-flotiq
+<a href="https://flotiq.com/">
+    <img src="https://editor.flotiq.com/fonts/fq-logo.svg" alt="Flotiq logo" title="Flotiq" align="right" height="60" />
+</a>
+
+gatsby-source-flotiq
+====================
+
+![](https://img.shields.io/npm/v/gatsby-source-flotiq)
 
 Source plugin for pulling data from [Flotiq](http://flotiq.com) into [Gatsby](https://www.gatsbyjs.org/) websites.
 
