@@ -29,6 +29,8 @@ npm install --save https://github.com/flotiq/gatsby-source-flotiq
 
 ```js
 // in your gatsby-config.js
+require('dotenv').config();
+
 module.exports = {
   // ...
   plugins: [
@@ -36,7 +38,7 @@ module.exports = {
       resolve: "gatsby-source-flotiq",		  
         options: {
             baseUrl: process.env.GATSBY_FLOTIQ_BASE_URL,
-            authToken: process.env.FLOTIQ_API_KEY,
+            authToken: process.env.GATSBY_FLOTIQ_API_KEY,
             forceReload: false, //(optional)
             includeTypes: ['contettype1', 'contettype2', ... ], //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
             objectLimit: 100000, //optional, limit number of objects for every type
@@ -49,4 +51,11 @@ module.exports = {
 }
 ```
 
-At this point you should have added Content Type Definitions required by template you chosen.
+please make sure to put your API credentials in your `.env` file:
+
+```
+GATSBY_FLOTIQ_BASE_URL="https://api.flotiq.com"
+GATSBY_FLOTIQ_API_KEY=XXXX-YOUR-API-KEY-XXXX
+```
+
+At this point you should have added Content Type Definitions required by your project/starter.
