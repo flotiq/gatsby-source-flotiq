@@ -153,6 +153,10 @@ exports.createSchemaCustomization = ({actions}) => {
           deletedAt: String!
           updatedAt: String!
           contentType: String!
+        }
+        type FlotiqGeo {
+            lat: Float
+            lng: Float
         }`);
         createTypes(typeDefs);
     })
@@ -217,6 +221,8 @@ const getType = (propertyConfig, required, property, ctdName) => {
             return 'Int' + (required ? '!' : '');
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
+        case 'geo':
+            return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
             let type = (propertyConfig.validation.relationContenttype !== '_media' ?
                 capitalize(propertyConfig.validation.relationContenttype) : '_media');
