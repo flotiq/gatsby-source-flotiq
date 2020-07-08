@@ -15,6 +15,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
 
 let createNodeGlobal;
 let resolveMissingRelationsGlobal;
+let resolveMediaFileGlobal = false;
 
 exports.sourceNodes = async (gatsbyFunctions, options) => {
 
@@ -27,11 +28,13 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         objectLimit = 100000,
         timeout = 5000,
         includeTypes = null,
-        resolveMissingRelations = true
+        resolveMissingRelations = true,
+        resolveMediaFile = false
     } = options;
 
     createNodeGlobal = createNode;
     resolveMissingRelationsGlobal = resolveMissingRelations;
+    resolveMediaFileGlobal = resolveMediaFile;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
@@ -156,12 +159,44 @@ exports.createSchemaCustomization = ({actions}) => {
         }
         type FlotiqGeo {
             lat: Float
-            lng: Float
+            lon: Float
         }`);
         createTypes(typeDefs);
     })
 
 };
+
+exports.createResolvers = ({
+                               actions,
+                               cache,
+                               createNodeId,
+                               createResolvers,
+                               store,
+                               reporter,
+                           }) => {
+    if(resolveMediaFileGlobal) {
+        const {createRemoteFileNode} = require(`gatsby-source-filesystem`)
+        const {createNode} = actions
+        createResolvers({
+            _media: {
+                localFile: {
+                    type: `File`,
+                    resolve(source, args, context, info) {
+                        return createRemoteFileNode({
+                            url: apiUrl + '/image/0x0/' + source.id + '.' + source.extension,
+                            store,
+                            cache,
+                            createNode,
+                            createNodeId,
+                            reporter,
+                            ext: '.' + source.extension
+                        })
+                    },
+                },
+            },
+        })
+    }
+}
 
 const createTypeDefs = (contentTypesDefinitions, schema) => {
     let typeDefs = [];
@@ -234,7 +269,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                     if (source[property]) {
                         let nodes = await Promise.all(source[property].map(async (prop) => {
                             if(typeof(prop.dataUrl) === 'undefined'){
-                                    return;
+                                return;
                             }
                             let node = {
                                 id: typeNonCapitalize === '_media' ?

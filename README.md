@@ -48,7 +48,8 @@ module.exports = {
             includeTypes: ['contettype1', 'contettype2', ... ], //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
             objectLimit: 100000, //optional, limit number of objects for every type
             timeout: 5000, //optional
-            resolveMissingRelations: true //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
+            resolveMissingRelations: true, //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
+            resolveMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
         },
     },
   ],
@@ -65,7 +66,7 @@ module.exports = {
 * `objectsLimit` - if you wish to not pull all objects from Flotiq (e.g. in development to speed up reload), you can limit it using this parameter, in production it should be higher than number of object in any Content Type pulled to project
 * `timeout` - time (in milliseconds) after which connection to Flotiq should timed out
 * `resolveMissingRelations` - when the `objectsLimit` is smaller than number of objects in CTDs to avoid nulls on objects connected to other objects plugin make additional calls to pull missing data, if you want to suppress this behavior set this parameter to `false` 
-
+* `resolveMediaFile` - should media files be cached and be available for gatsby-image and gatsby-sharp
 
 please make sure to put your API credentials in your `.env` file:
 
