@@ -15,7 +15,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
 
 let createNodeGlobal;
 let resolveMissingRelationsGlobal;
-let resolveMediaFileGlobal = false;
+let downloadMediaFileGlobal = false;
 
 exports.sourceNodes = async (gatsbyFunctions, options) => {
 
@@ -29,12 +29,12 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         timeout = 5000,
         includeTypes = null,
         resolveMissingRelations = true,
-        resolveMediaFile = false
+        downloadMediaFile = false
     } = options;
 
     createNodeGlobal = createNode;
     resolveMissingRelationsGlobal = resolveMissingRelations;
-    resolveMediaFileGlobal = resolveMediaFile;
+    downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
     if (!apiUrl) {
@@ -112,7 +112,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             } else {
                 reporter.warn('Error fetching data', response);
             }
-            if(lastUpdate && lastUpdate.updated_at) {
+            if (lastUpdate && lastUpdate.updated_at) {
                 url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(lastUpdate.updated_at);
                 response = await fetch(url, {headers: headers});
                 reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
@@ -129,11 +129,13 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         if (changed) {
             reporter.info('Updated entries ' + changed);
         }
-        if(removed) {
+        if (removed) {
             reporter.info('Removed entries ' + removed);
         }
-        setPluginStatus({'updated_at':
-                (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')});
+        setPluginStatus({
+            'updated_at':
+                (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')
+        });
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
             reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url ' +
@@ -160,6 +162,21 @@ exports.createSchemaCustomization = ({actions}) => {
         type FlotiqGeo {
             lat: Float
             lon: Float
+        }
+        type FlotiqImageFixed implements Node {
+            aspectRatio: Float,
+            width: Float,
+            height: Float,
+            src: String,
+            srcSet: String,
+            originalName: String
+        }
+        type FlotiqImageFluid implements Node {
+            aspectRatio: Float,
+            src: String,
+            srcSet: String,
+            originalName: String,
+            sizes: String
         }`);
         createTypes(typeDefs);
     })
@@ -174,7 +191,7 @@ exports.createResolvers = ({
                                store,
                                reporter,
                            }) => {
-    if(resolveMediaFileGlobal) {
+    if (downloadMediaFileGlobal) {
         const {createRemoteFileNode} = require(`gatsby-source-filesystem`)
         const {createNode} = actions
         createResolvers({
@@ -183,17 +200,17 @@ exports.createResolvers = ({
                     type: `File`,
                     resolve(source, args, context, info) {
                         return createRemoteFileNode({
-                            url: apiUrl + '/image/0x0/' + source.id + '.' + source.extension,
+                            url: apiUrl + source.url,
                             store,
                             cache,
                             createNode,
                             createNodeId,
                             reporter,
                             ext: '.' + source.extension
-                        })
-                    },
-                },
-            },
+                        });
+                    }
+                }
+            }
         })
     }
 }
@@ -231,12 +248,129 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
                 typeDefs.push(schema.buildObjectType(additionalDef));
             }
         });
+        if (ctd.name === '_media' && !downloadMediaFileGlobal) {
+            tmpDef.fields.fixed = {
+                type: 'FlotiqImageFixed',
+                args: {
+                    width: 'Int',
+                    height: 'Int'
+                },
+                resolve(source, args) {
+                    let width = 0;
+                    let height = 0;
+                    if (args.width) {
+                        width = args.width;
+                    }
+                    if (args.height) {
+                        height = args.height
+                    }
+                    return {
+                        aspectRatio: (args.width && args.height) ? (args.width / args.height) : (source.width / source.height),
+                        height: args.height ? args.height : source.height,
+                        originalName: source.id + '.' + source.extension,
+                        src: apiUrl + source.url.replace('0x0', width + 'x' + height),
+                        srcSet: createSrcSetFixed(apiUrl, source, args),
+                        width: args.width ? args.width : source.width,
+                    }
+                }
+            };
+            tmpDef.fields.fluid = {
+                type: 'FlotiqImageFluid',
+                args: {
+                    maxWidth: 'Int',
+                    sizes: 'String'
+                },
+                resolve(source, args) {
+                    return {
+                        aspectRatio: source.width / source.height,
+                        originalName: source.id + '.' + source.extension,
+                        src: apiUrl + (args.maxWidth ? source.url.replace('0x0', args.maxWidth + 'x0') : source.url),
+                        srcSet: createSrcSetFluid(apiUrl, source, args),
+                        sizes: args.sizes ? args.sizes : '(max-width: ' + (args.maxWidth ? args.maxWidth : source.width) + 'px) 100vw, ' + (args.maxWidth ? args.maxWidth : source.width) + 'px'
+                    }
+                }
+            };
+        }
 
         tmpDef.fields.flotiqInternal = `FlotiqInternal!`;
         typeDefs.push(schema.buildObjectType(tmpDef));
     });
     typeDefinitionsDeferred.resolve(typeDefs);
 };
+
+const createSrcSetFluid = (apiUrl, source, args) => {
+    let array = [];
+    if (!args.maxWidth) {
+        if (source.width >= 200) {
+            array.push(apiUrl + '/image/200x0/' + source.id + '.' + source.extension + ' 200w');
+            if (source.width >= 400) {
+                array.push(apiUrl + '/image/400x0/' + source.id + '.' + source.extension + ' 400w');
+                if (source.width >= 800) {
+                    array.push(apiUrl + '/image/800x0/' + source.id + '.' + source.extension + ' 800w');
+                    if (source.width >= 1200) {
+                        array.push(apiUrl + '/image/1200x0/' + source.id + '.' + source.extension + ' 1200w');
+                        if (source.width <= 1600) {
+                            array.push(apiUrl + '/image/1600x0/' + source.id + '.' + source.extension + ' 1600w');
+                            if (source.width >= 1920) {
+                                array.push(apiUrl + '/image/1920x0/' + source.id + '.' + source.extension + ' 1920w');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (args.maxWidth <= source.width) {
+            let per25 = args.maxWidth / 4;
+            let per50 = args.maxWidth / 2;
+            let per150 = args.maxWidth * 1.5;
+            let per200 = args.maxWidth * 2;
+            array.push(apiUrl + '/image/' + Math.floor(per25) + 'x0/' + source.id + '.' + source.extension + ' ' + per25 + 'w');
+            array.push(apiUrl + '/image/' + Math.floor(per50) + 'x0/' + source.id + '.' + source.extension + ' ' + per50 + 'w');
+            array.push(apiUrl + '/image/' + args.maxWidth + 'x0/' + source.id + '.' + source.extension + ' ' + args.maxWidth + 'w');
+            if (per150 <= source.width) {
+                array.push(apiUrl + '/image/' + Math.floor(per150) + 'x0/' + source.id + '.' + source.extension + ' ' + per150 + 'w');
+                if (per200 <= source.width) {
+                    array.push(apiUrl + '/image/' + Math.floor(per200) + 'x0/' + source.id + '.' + source.extension + ' ' + per200 + 'w');
+                }
+            }
+        } else {
+            let per25 = args.maxWidth / 4;
+            if (per25 < source.width) {
+                array.push(apiUrl + '/image/' + Math.floor(per25) + 'x0/' + source.id + '.' + source.extension + ' ' + per25 + 'w');
+                let per50 = args.maxWidth / 2;
+                if (per50 < source.width) {
+                    array.push(apiUrl + '/image/' + Math.floor(per50) + 'x0/' + source.id + '.' + source.extension + ' ' + per50 + 'w');
+                }
+            }
+
+            array.push(apiUrl + '/image/' + source.width + 'x0/' + source.id + '.' + source.extension + ' ' + source.width + 'w');
+        }
+    }
+    return array.join(',\n')
+}
+
+const createSrcSetFixed = (apiUrl, source, args) => {
+    let width = 0;
+    let height = 0;
+    if (args.width) {
+        width = args.width;
+    }
+    if (args.height) {
+        height = args.height
+    }
+    let array = [
+        apiUrl + '/image/' + width + 'x' + height + '/' + source.id + '.' + source.extension + ' 1x'
+    ];
+    if (width * 1.5 <= source.width && height * 1.5 <= source.height) {
+        array.push(apiUrl + '/image/' + width * 1.5 + 'x' + height * 1.5 + '/' + source.id + '.' + source.extension + ' 1.5x');
+        if (width * 2 <= source.width && height * 2 <= source.height) {
+            array.push(apiUrl + '/image/' + width * 2 + 'x' + height * 2 + '/' + source.id + '.' + source.extension + ' 2x');
+        }
+    }
+
+    return array.join(',\n')
+}
 
 const capitalize = (s) => {
     if (typeof s !== 'string') return '';
@@ -268,7 +402,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                 resolve: async (source, args, context, info) => {
                     if (source[property]) {
                         let nodes = await Promise.all(source[property].map(async (prop) => {
-                            if(typeof(prop.dataUrl) === 'undefined'){
+                            if (typeof (prop.dataUrl) === 'undefined') {
                                 return;
                             }
                             let node = {
@@ -304,7 +438,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return nodeModel
                             }
                         }));
-                        if(!nodes[0]) {
+                        if (!nodes[0]) {
                             return [];
                         }
                         return nodes;

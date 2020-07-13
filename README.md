@@ -49,7 +49,7 @@ module.exports = {
             objectLimit: 100000, //optional, limit number of objects for every type
             timeout: 5000, //optional
             resolveMissingRelations: true, //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
-            resolveMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
+            downloadMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
         },
     },
   ],
@@ -66,7 +66,7 @@ module.exports = {
 * `objectsLimit` - if you wish to not pull all objects from Flotiq (e.g. in development to speed up reload), you can limit it using this parameter, in production it should be higher than number of object in any Content Type pulled to project
 * `timeout` - time (in milliseconds) after which connection to Flotiq should timed out
 * `resolveMissingRelations` - when the `objectsLimit` is smaller than number of objects in CTDs to avoid nulls on objects connected to other objects plugin make additional calls to pull missing data, if you want to suppress this behavior set this parameter to `false` 
-* `resolveMediaFile` - should media files be cached and be available for gatsby-image and gatsby-sharp
+* `downloadMediaFile` - should media files be downloaded and cached and be available fully for gatsby-image and gatsby-image-sharp
 
 please make sure to put your API credentials in your `.env` file:
 
@@ -76,6 +76,72 @@ GATSBY_FLOTIQ_API_KEY=XXXX-YOUR-API-KEY-XXXX
 ```
 
 At this point you should have added Content Type Definitions required by your project/starter, more about adding Content Types ond Objects in [the Flotiq documentation](https://flotiq.com/docs/API/content-types/).
+
+## Media
+
+If you are using default `downloadMediaFile` parameter (`false`), the fixed and fluid images are limited (no base46, automatic webp translation and tracedSVG). You can use them like that (assuming you have blogpost Content Type with headerImage media property):
+
+```
+query MyQuery {
+  allBlogpost {
+    nodes {
+      headerImage {
+        fixed(height: 1000, width: 1000) {
+          aspectRatio
+          height
+          width
+          src
+          srcSet
+        }
+        fluid(maxWidth: 1000) {
+          src
+          srcSet
+          aspectRatio
+          originalName
+        }
+      }
+    }
+  }
+}
+```
+
+```
+import Img from "gatsby-image";
+//...
+const post = this.props.data.blogpost;
+//...
+<Img fluid={post.headerImage[0].fluid}/>
+<Img fluid={post.headerImage[0].fixed}/>
+```
+
+If you are using `downloadMediaFile` as `true`, you can use full potential of gatsby-image and gatsby-image-sharp. You can use them like that (assuming you have blogpost Content Type with headerImage media property):
+```
+query MyQuery {
+  allBlogpost {
+    nodes {
+      headerImage {
+        childImageSharp {
+          fixed {
+            ...GatsbyImageSharpFixed
+          }
+          fluid {
+            ...GatsbyImageSharpFluid
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```
+import Img from "gatsby-image";
+//...
+const post = this.props.data.blogpost;
+//...
+<Img fixed={post.headerImage[0].localFile.childImageSharp.fluid}/>
+<Img fixed={post.headerImage[0].localFile.childImageSharp.fixed}/>
+```
 
 ## Collaboration
 
