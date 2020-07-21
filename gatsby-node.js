@@ -309,7 +309,7 @@ const createSrcSetFluid = (apiUrl, source, args) => {
                     array.push(apiUrl + '/image/800x0/' + source.id + '.' + source.extension + ' 800w');
                     if (source.width >= 1200) {
                         array.push(apiUrl + '/image/1200x0/' + source.id + '.' + source.extension + ' 1200w');
-                        if (source.width <= 1600) {
+                        if (source.width >= 1600) {
                             array.push(apiUrl + '/image/1600x0/' + source.id + '.' + source.extension + ' 1600w');
                             if (source.width >= 1920) {
                                 array.push(apiUrl + '/image/1920x0/' + source.id + '.' + source.extension + ' 1920w');
