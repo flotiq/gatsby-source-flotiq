@@ -120,12 +120,14 @@ query MyQuery {
   allBlogpost {
     nodes {
       headerImage {
-        childImageSharp {
-          fixed {
-            ...GatsbyImageSharpFixed
-          }
-          fluid {
-            ...GatsbyImageSharpFluid
+        localFile {
+          childImageSharp {
+            fixed(height: 1000, width: 1000) {
+              ...GatsbyImageSharpFixed
+            }
+            fluid(maxWidth: 1000) {
+              ...GatsbyImageSharpFluid
+            }
           }
         }
       }
