@@ -111,7 +111,7 @@ import Img from "gatsby-image";
 const post = this.props.data.blogpost;
 //...
 <Img fluid={post.headerImage[0].fluid}/>
-<Img fluid={post.headerImage[0].fixed}/>
+<Img fixed={post.headerImage[0].fixed}/>
 ```
 
 If you are using `downloadMediaFile` as `true`, you can use full potential of gatsby-image and gatsby-image-sharp. You can use them like that (assuming you have blogpost Content Type with headerImage media property):
@@ -139,7 +139,7 @@ import Img from "gatsby-image";
 //...
 const post = this.props.data.blogpost;
 //...
-<Img fixed={post.headerImage[0].localFile.childImageSharp.fluid}/>
+<Img fluid={post.headerImage[0].localFile.childImageSharp.fluid}/>
 <Img fixed={post.headerImage[0].localFile.childImageSharp.fixed}/>
 ```
 
