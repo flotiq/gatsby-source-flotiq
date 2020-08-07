@@ -67,7 +67,7 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
     } = options;
     
     let {
-        singleFetchLimit = 5000
+        singleFetchLimit = 1000
     } = options;
     
     singleFetchLimit = Math.min(singleFetchLimit, 5000); //We're hard capping single fetch, limit
