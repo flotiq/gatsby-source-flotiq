@@ -10,5 +10,11 @@
         "gatsby-core-utils": "^1.0.32",
         "gatsby-source-filesystem": "^2.3.18",
         "node-fetch": "^2.6.0"
+    },
+    "devDependencies": {
+        "jest": "^26.2.2"
+    },
+    "scripts": {
+        "test": "jest"
     }
 }
