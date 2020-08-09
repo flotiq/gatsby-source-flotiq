@@ -14,7 +14,7 @@ function mockFunctions(functionNames) {
 }
 
 describe('sourceNodes', () => {
-    test('downloads all the data', async () => {
+    test('Downloads all the data', async () => {
         const actions = mockFunctions(['createNode','setPluginStatus','touchNode','deleteNode']);
         const gatsbyFunctions = {
             actions, 
@@ -45,5 +45,17 @@ describe('sourceNodes', () => {
         expect(fetch).toHaveBeenNthCalledWith(2, expect.stringContaining(`${options.baseUrl}/api/v1/content/Type-1`), expectedHeaders);
         expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
     });
+
+    test.todo('Updates and removes outdated data')
+    test.todo('creates media type')
+
+    test.todo('Downloads media as remote file')
+    test.todo('Generates media srcSet when using remote medias')
+    
+    test.todo('Does not download more than objectLimit')
+
+    test.todo('Reloads data when forceReload is provided')
+
+    test.todo('Downloads only requested content types')
 })
 
