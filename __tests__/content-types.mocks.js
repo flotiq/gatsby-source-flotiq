@@ -1,7 +1,7 @@
 module.exports.CTD1 = {
-    "id": "Type-1",
-    "name": "Type-1",
-    "label": "Type-1",
+    "id": "Type-1-id",
+    "name": "Type-1-name",
+    "label": "Type-1-label",
     "internal": false,
     "schemaDefinition": {
       "type": "object",
@@ -70,3 +70,21 @@ module.exports.CTD1_OBJECT1 = {
 }
 
 module.exports.CTD1_OBJECT1_STR = JSON.stringify(module.exports.CTD1_OBJECT1)
+
+
+module.exports.CTD1_OBJECT2_DATA = {
+  name: "Object 2 name",
+  data: "Object 2 data",
+}
+
+module.exports.CTD1_OBJECT2 = {
+  id: "CTD1-Object-2",
+  ...module.exports.CTD1_OBJECT2_DATA,
+  internal: {
+      "deletedAt": null,
+      "createdAt": "2020-02-20T09:25:54.000000+0000",
+      "updatedAt": null
+  }
+}
+
+module.exports.CTD1_OBJECT2_STR = JSON.stringify(module.exports.CTD1_OBJECT2)

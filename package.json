@@ -12,7 +12,8 @@
         "node-fetch": "^2.6.0"
     },
     "devDependencies": {
-        "jest": "^26.2.2"
+        "jest": "^26.2.2",
+        "jest-when": "^2.7.2"
     },
     "scripts": {
         "test": "jest"
