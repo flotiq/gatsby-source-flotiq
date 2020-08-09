@@ -40,6 +40,7 @@ describe('sourceNodes', () => {
     
         await sourceNodes(gatsbyFunctions, options)
     
+        expect(gatsbyFunctions.schema.buildObjectType).toHaveBeenCalledTimes(1)
         expect(fetch).toHaveBeenNthCalledWith(1, expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`), expectedHeaders);
         expect(fetch).toHaveBeenNthCalledWith(2, expect.stringContaining(`${options.baseUrl}/api/v1/content/Type-1`), expectedHeaders);
         expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
