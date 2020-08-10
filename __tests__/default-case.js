@@ -85,15 +85,15 @@ describe('sourceNodes', () => {
             })
         
             when(fetch)
-                .expectCalledWith(expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
+                .calledWith(expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
     
             when(fetch)
-                .expectCalledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
+                .calledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`{"data": []}`)))
     
             when(fetch)
-                .expectCalledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
+                .calledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`["${CTD1_OBJECT1.id}"]`)))
         
             await sourceNodes(gatsbyFunctions, options)
@@ -130,32 +130,20 @@ describe('sourceNodes', () => {
             })
         
             when(fetch)
-                .expectCalledWith(expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
+                .calledWith(expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
     
             when(fetch)
-                .expectCalledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
+                .calledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)))
     
             when(fetch)
-                .expectCalledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
+                .calledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`[]`)))
-        
+  
             await sourceNodes(gatsbyFunctions, options)
-              
             expect(actions.touchNode).toBeCalledTimes(2)
         });    
     })
-   
-    test.todo('Creates media type')
-
-    test.todo('Downloads media as remote file')
-    test.todo('Generates media srcSet when using remote medias')
-    
-    test.todo('Does not download more than objectLimit')
-
-    test.todo('Reloads data when forceReload is provided')
-
-    test.todo('Downloads only requested content types')
 })
 
