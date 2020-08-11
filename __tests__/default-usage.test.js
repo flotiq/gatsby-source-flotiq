@@ -14,7 +14,7 @@ const {Response} = jest.requireActual('node-fetch');
 
 const {sourceNodes} = require('../gatsby-node');
 
-function mockFunctions(functionNames) {
+function createObjectWithMethods(functionNames) {
     return functionNames.reduce((acc, name) => {
         acc[name] = jest.fn().mockName(name)
         return acc;
@@ -23,13 +23,13 @@ function mockFunctions(functionNames) {
 
 describe('sourceNodes', () => {
     test('Downloads the data from scratch', async () => {
-        const actions = mockFunctions(['createNode','setPluginStatus','touchNode','deleteNode']);
+        const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
         const gatsbyFunctions = {
             actions, 
             store: {getState: jest.fn(_ => {return { status: {plugins: {}} }})}, 
             getNodes: jest.fn().mockName('getNodes').mockReturnValue([]), 
-            reporter: mockFunctions(['info','panic','warn']),
-            schema: mockFunctions(['buildObjectType'])
+            reporter: createObjectWithMethods(['info','panic','warn']),
+            schema: createObjectWithMethods(['buildObjectType'])
         };
         const options = {
             baseUrl: 'https://a.b',
@@ -58,20 +58,20 @@ describe('sourceNodes', () => {
 
     describe('When launched second time', () => {
         test('Removes outdated data', async () => {
-            const actions = mockFunctions(['createNode','setPluginStatus','touchNode','deleteNode']);
+            const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
             const LAST_UPDATE = '2020-01-01T00:00:00Z';
             const gatsbyFunctions = {
                 actions, 
                 store: {getState: jest.fn(_ => {return { status: {plugins: {
                     'gatsby-source-flotiq': {
-                        updated_at: '2020-01-01T00:00:00Z'
+                        updated_at: LAST_UPDATE
                     }
                 }} }})}, 
                 getNodes: jest.fn().mockName('getNodes').mockReturnValue([
                     {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}}
                 ]), 
-                reporter: mockFunctions(['info','panic','warn']),
-                schema: mockFunctions(['buildObjectType'])
+                reporter: createObjectWithMethods(['info','panic','warn']),
+                schema: createObjectWithMethods(['buildObjectType'])
             };
             const options = {
                 baseUrl: 'https://a.b',
@@ -102,21 +102,21 @@ describe('sourceNodes', () => {
         });
     
         test('Updates only new data', async () => {
-            const actions = mockFunctions(['createNode','setPluginStatus','touchNode','deleteNode']);
+            const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
             const LAST_UPDATE = '2020-01-01T00:00:00Z';
             const gatsbyFunctions = {
                 actions, 
                 store: {getState: jest.fn(_ => {return { status: {plugins: {
                     'gatsby-source-flotiq': {
-                        updated_at: '2020-01-01T00:00:00Z'
+                        updated_at: LAST_UPDATE
                     }
                 }} }})}, 
                 getNodes: jest.fn().mockName('getNodes').mockReturnValue([
                     {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}},
                     {id: `${CTD1.name}_${CTD1_OBJECT2.id}`, ...CTD1_OBJECT2_DATA, internal: {owner: 'gatsby-source-flotiq'}}
                 ]), 
-                reporter: mockFunctions(['info','panic','warn']),
-                schema: mockFunctions(['buildObjectType'])
+                reporter: createObjectWithMethods(['info','panic','warn']),
+                schema: createObjectWithMethods(['buildObjectType'])
             };
             const options = {
                 baseUrl: 'https://a.b',
@@ -142,7 +142,9 @@ describe('sourceNodes', () => {
                 .mockReturnValueOnce(Promise.resolve(new Response(`[]`)))
   
             await sourceNodes(gatsbyFunctions, options)
+            
             expect(actions.touchNode).toBeCalledTimes(2)
+            expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
         });    
     })
 })

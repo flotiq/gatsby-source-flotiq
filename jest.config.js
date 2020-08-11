@@ -1,7 +1,7 @@
 module.exports = async () => {
     return {
         verbose: true,
-        testPathIgnorePatterns: ["/node_modules/", '.*\.mocks\.js'],
+        testRegex: "__tests__/.*\\.(spec|test)\\.[jt]s?x?",
         rootDir: __dirname,
         clearMocks: true
     };
