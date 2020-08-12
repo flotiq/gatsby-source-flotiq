@@ -100,7 +100,8 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
 
     await workers(downloadJobs, maxConcurrentDataDownloads, async ({baseUrl, objectLimit, page, ctd, totalPages, limitPerPage}) => {
         const url = `${baseUrl}&page=${page}`;
-        const humanizedPageNumber = page === 1 ? 'frist page' : `${page}/${totalPages}`
+        const humanizedPageNumber = page === 1 ? 'first page' : `${page}/${totalPages}`
+
         reporter.info(`Fetching${since ? ' updates' : ''}: ${ctd.name} ${humanizedPageNumber}`)
         let response = await fetch(url, {headers: createHeaders(options), timeout: timeout});
         if (!response.ok) 
