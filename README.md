@@ -46,7 +46,9 @@ module.exports = {
             authToken: process.env.GATSBY_FLOTIQ_API_KEY,
             forceReload: false, //(optional)
             includeTypes: ['contettype1', 'contettype2', ... ], //(optional) List of used contenttypes identified by API Name. If ommitted, all content types will be synchronized. Make sure to include all referenced content types as well
-            objectLimit: 100000, //optional, limit number of objects for every type
+            objectLimit: 100000, //optional, limit total number of objects downloaded for every type
+            singleFetchLimit: 1000, //optional, limit the number of objects downloaded in single api call. Min: 1, Max 5000, Default 1000
+            maxConcurrentDataDownloads: 10, //optional, limit the number of concurrent api calls. Default: 10, Min: 1, Max: 50
             timeout: 5000, //optional
             resolveMissingRelations: true, //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
             downloadMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
@@ -63,7 +65,9 @@ module.exports = {
 * `authToke` - API token, if you wish to only pull data from Flotiq it can be Red-only key, if you need to put data it has to be Read-write key, more about Flotiq API keys [here](https://flotiq.com/docs/API/)
 * `forceRelaod` - indicates if the data should be pulled in full or plugin should use cache (`true` for full pull, `false` for cache usage)
 * `includeTypes` - array of Content Type Definitions used in the project (if you use images or files pulled from Flotiq, you must include `_media` CTD)
-* `objectsLimit` - if you wish to not pull all objects from Flotiq (e.g. in development to speed up reload), you can limit it using this parameter, in production it should be higher than number of object in any Content Type pulled to project
+* `objectsLimit` - if you wish to not pull all objects from Flotiq (e.g. in development to speed up reload), you can limit it using this parameter. This will limit the total number of downloaded objects. In production it should be higher than number of object in any Content Type pulled to project
+* `singleFetchLimit` - if you experience timeuts, or any other problems with download, you can change the default number of objects downloaded in a single API call. It has to be in integer from `1` to `5000`. The default value is `1000`.
+* `maxConcurrentDataDownloads` - If you have a large number of content types, or many objects in a single content type, you can change the default number of concurrent connections. It has to be in integer from `1` to `50`. The default value is `10`.
 * `timeout` - time (in milliseconds) after which connection to Flotiq should timed out
 * `resolveMissingRelations` - when the `objectsLimit` is smaller than number of objects in CTDs to avoid nulls on objects connected to other objects plugin make additional calls to pull missing data, if you want to suppress this behavior set this parameter to `false` 
 * `downloadMediaFile` - should media files be downloaded and cached and be available fully for gatsby-image and gatsby-image-sharp

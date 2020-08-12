@@ -62,15 +62,17 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
     const {
         baseUrl,
         objectLimit = 100000,
-        timeout = 5000,
-        maxConcurrentDataDownloads = 10
+        timeout = 5000
     } = options;
     
     let {
-        singleFetchLimit = 1000
+        singleFetchLimit = 1000,
+        maxConcurrentDataDownloads = 10
     } = options;
     
-    singleFetchLimit = Math.min(singleFetchLimit, 5000); //We're hard capping single fetch, limit
+    maxConcurrentDataDownloads = Math.max(Math.min(maxConcurrentDataDownloads, 50), 1)  // 1 <= maxConcurrentDataDownloads  <= 50
+    singleFetchLimit = Math.max(Math.min(singleFetchLimit, 5000), 1);                   // 1 <= singleFetchLimit            <= 5000
+
     let changed = 0;
     let downloadJobs = contentTypes.map(ctd => {
         let currentNodeCount = 0;
