@@ -6,7 +6,7 @@ const {
     CTD1_OBJECT1_STR, 
     CTD1_OBJECT2_DATA, 
     CTD1_OBJECT2 } = require('./content-types.mocks')
-const { when } = require('jest-when');
+const { when , verifyAllWhenMocksCalled, resetAllWhenMocks} = require('jest-when');
 
 jest.mock('node-fetch');
 const fetch = require('node-fetch');
@@ -20,6 +20,10 @@ function createObjectWithMethods(functionNames) {
         return acc;
     }, {})
 }
+
+beforeEach(() => {
+    resetAllWhenMocks()
+})
 
 describe('sourceNodes', () => {
     test('Downloads the data from scratch', async () => {
@@ -51,7 +55,8 @@ describe('sourceNodes', () => {
             .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)))
 
         await sourceNodes(gatsbyFunctions, options)
-    
+
+        verifyAllWhenMocksCalled()
         expect(gatsbyFunctions.schema.buildObjectType).toHaveBeenCalledTimes(1)
         expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
     });
@@ -70,6 +75,9 @@ describe('sourceNodes', () => {
                 getNodes: jest.fn().mockName('getNodes').mockReturnValue([
                     {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}}
                 ]), 
+                getNodesByType: jest.fn().mockName('getNodesByType').mockReturnValue([
+                    {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}}
+                ]),
                 reporter: createObjectWithMethods(['info','panic','warn']),
                 schema: createObjectWithMethods(['buildObjectType'])
             };
@@ -95,9 +103,10 @@ describe('sourceNodes', () => {
             when(fetch)
                 .calledWith(expect.stringMatching(`${options.baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
                 .mockReturnValueOnce(Promise.resolve(new Response(`["${CTD1_OBJECT1.id}"]`)))
-        
-            await sourceNodes(gatsbyFunctions, options)
             
+            await sourceNodes(gatsbyFunctions, options)
+
+            verifyAllWhenMocksCalled()
             expect(actions.deleteNode).toBeCalledWith({node: expect.objectContaining({id: expect.stringContaining(CTD1_OBJECT1.id)})})
         });
     
@@ -115,6 +124,10 @@ describe('sourceNodes', () => {
                     {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}},
                     {id: `${CTD1.name}_${CTD1_OBJECT2.id}`, ...CTD1_OBJECT2_DATA, internal: {owner: 'gatsby-source-flotiq'}}
                 ]), 
+                getNodesByType: jest.fn().mockName('getNodesByType').mockReturnValue([
+                    {id: `${CTD1.name}_${CTD1_OBJECT1.id}`, ...CTD1_OBJECT1_DATA, internal: {owner: 'gatsby-source-flotiq'}},
+                    {id: `${CTD1.name}_${CTD1_OBJECT2.id}`, ...CTD1_OBJECT2_DATA, internal: {owner: 'gatsby-source-flotiq'}}
+                ]),
                 reporter: createObjectWithMethods(['info','panic','warn']),
                 schema: createObjectWithMethods(['buildObjectType'])
             };
@@ -142,7 +155,8 @@ describe('sourceNodes', () => {
                 .mockReturnValueOnce(Promise.resolve(new Response(`[]`)))
   
             await sourceNodes(gatsbyFunctions, options)
-            
+
+            verifyAllWhenMocksCalled()
             expect(actions.touchNode).toBeCalledTimes(2)
             expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
         });    
