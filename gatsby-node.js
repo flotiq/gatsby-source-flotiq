@@ -22,7 +22,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     const {
-        baseUrl,
+        baseUrl = "https://api.flotiq.com",
         authToken,
         forceReload,
         objectLimit = 100000,
@@ -37,10 +37,6 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
     headers['X-AUTH-TOKEN'] = authToken;
-    if (!apiUrl) {
-        reporter.panic('FLOTIQ: You must specify API url ' +
-            '(in most cases it is "https://api.flotiq.com")');
-    }
     if (!authToken) {
         reporter.panic("FLOTIQ: You must specify API token " +
             "(if you don't know what it is check: https://flotiq.com/docs/API/)");
