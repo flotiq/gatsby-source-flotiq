@@ -1,11 +1,10 @@
 const fetch = require('node-fetch');
 const {createContentDigest} = require(`gatsby-core-utils`);
+const {getContentTypes, getDeletedObjects, getContentObjects} = require('./src/data-loader');
+const {capitalize} = require('./src/utils')
 
 const digest = str => createContentDigest(str);
 
-let headers = {
-    'accept': 'application/json',
-};
 let apiUrl;
 
 let typeDefinitionsDeferred;
@@ -22,21 +21,23 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     const {
-        baseUrl = "https://api.flotiq.com",
+        baseUrl,
         authToken,
         forceReload,
-        objectLimit = 100000,
-        timeout = 5000,
         includeTypes = null,
         resolveMissingRelations = true,
         downloadMediaFile = false
     } = options;
-
+    
     createNodeGlobal = createNode;
     resolveMissingRelationsGlobal = resolveMissingRelations;
     downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
-    headers['X-AUTH-TOKEN'] = authToken;
+    
+    if (!apiUrl) {
+        reporter.panic('FLOTIQ: You must specify API url ' +
+            '(in most cases it is "https://api.flotiq.com")');
+    }
     if (!authToken) {
         reporter.panic("FLOTIQ: You must specify API token " +
             "(if you don't know what it is check: https://flotiq.com/docs/API/)");
@@ -45,22 +46,12 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
         reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
-
-    let contentTypeDefinitionsResponse = await fetch(
-        apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
-        {
-            headers: headers,
-            timeout: timeout
-        });
-
-    if (contentTypeDefinitionsResponse.ok) {
+    try {
         if (forceReload) {
             setPluginStatus({'updated_at': null});
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
-        let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
-        const contentTypeDefsData = contentTypeDefinitions.data.filter(
-            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
+        
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
@@ -68,60 +59,36 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         if (!existingNodes.length) {
             lastUpdate = undefined;
         }
+
+        const contentTypeDefsData = await getContentTypes(options);
         createTypeDefs(contentTypeDefsData, schema);
 
         let changed = 0;
         let removed = 0;
-        await Promise.all(contentTypeDefsData.map(async ctd => {
-            let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + objectLimit;
+        
+        if (lastUpdate && lastUpdate.updated_at) {
+            removed = await getDeletedObjects(gatsbyFunctions, options, lastUpdate.updated_at, contentTypeDefsData, async (ctd, id) => {
+                let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
+                return await deleteNode({node});
+            });
+        }
 
-            if (lastUpdate && lastUpdate.updated_at) {
-                url += '&filters=' + encodeURIComponent(JSON.stringify({
-                    "internal.updatedAt": {
-                        "type": "greaterThan",
-                        "filter": lastUpdate.updated_at
-                    }
-                }))
-            }
-            let response = await fetch(url, {headers: headers, timeout: timeout});
-            reporter.info(`Fetching content type ${ctd.name}: ${url}`);
-
-            if (response.ok) {
-                const json = await response.json();
-                await Promise.all(json.data.map(async datum => {
-                    changed++;
-                    return createNode({
-                        ...datum,
-                        // custom
-                        flotiqInternal: datum.internal,
-                        // required
-                        id: ctd.name === '_media' ? datum.id : ctd.name + '_' + datum.id,
-                        parent: null,
-                        children: [],
-                        internal: {
-                            type: capitalize(ctd.name),
-                            contentDigest: digest(JSON.stringify(datum)),
-                        },
-                    });
-
-                }));
-            } else {
-                reporter.warn('Error fetching data', response);
-            }
-            if (lastUpdate && lastUpdate.updated_at) {
-                url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(lastUpdate.updated_at);
-                response = await fetch(url, {headers: headers});
-                reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
-                if (response.ok) {
-                    const jsonRemoved = await response.json();
-                    await Promise.all(jsonRemoved.map(async id => {
-                        removed++;
-                        let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
-                        return deleteNode({node: node});
-                    }));
-                }
-            }
-        }));
+        changed = await getContentObjects(gatsbyFunctions, options, lastUpdate && lastUpdate.updated_at, contentTypeDefsData, async (ctd, datum) => {
+            return createNode({
+                ...datum,
+                // custom
+                flotiqInternal: datum.internal,
+                // required
+                id: ctd.name === '_media' ? datum.id : ctd.name + '_' + datum.id,
+                parent: null,
+                children: [],
+                internal: {
+                    type: capitalize(ctd.name),
+                    contentDigest: digest(JSON.stringify(datum)),
+                },
+            });
+        })
+        
         if (changed) {
             reporter.info('Updated entries ' + changed);
         }
@@ -132,16 +99,10 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             'updated_at':
                 (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')
         });
-    } else {
-        if (contentTypeDefinitionsResponse.status === 404) {
-            reporter.panic('FLOTIQ: We couldn\'t connect to API. Check if you specified correct API url ' +
-                '(in most cases it is "https://api.flotiq.com")');
-        }
-        if (contentTypeDefinitionsResponse.status === 403) {
-            reporter.panic('FLOTIQ: We couldn\'t authorize you in API. Check if you specified correct API token ' +
-                '(if you don\'t know what it is check: https://flotiq.com/docs/API/)');
-        }
+    } catch(e) {
+        reporter.panic('FLOTIQ: ' + e.message)
     }
+
     return {};
 };
 
@@ -368,10 +329,7 @@ const createSrcSetFixed = (apiUrl, source, args) => {
     return array.join(',\n')
 }
 
-const capitalize = (s) => {
-    if (typeof s !== 'string') return '';
-    return s.charAt(0).toUpperCase() + s.slice(1);
-};
+
 
 const getType = (propertyConfig, required, property, ctdName) => {
     switch (propertyConfig.inputType) {
