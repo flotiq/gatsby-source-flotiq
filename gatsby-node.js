@@ -21,7 +21,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     const {
-        baseUrl = "https://api.flotiq.com/",
+        baseUrl = "https://api.flotiq.com",
         authToken,
         forceReload,
         includeTypes = null,
