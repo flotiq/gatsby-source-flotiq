@@ -2,20 +2,19 @@ const fetch = require('node-fetch');
 const workers = require('./workers')
 const {capitalize, createHeaders} = require('./utils')
 
-module.exports.getContentTypes = async function (options) {
+module.exports.getContentTypes = async function (options, apiUrl) {
     const {
         timeout = 5000,
         includeTypes = null,
-        baseUrl
     } = options;
 
     let contentTypeDefinitionsResponse = await fetch(
-        baseUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
+        apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
         {
             headers: createHeaders(options),
             timeout: timeout
         });
-    
+
     if (contentTypeDefinitionsResponse.ok) {
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
         const contentTypeDefsData = contentTypeDefinitions.data.filter(
@@ -28,19 +27,16 @@ module.exports.getContentTypes = async function (options) {
         } else if (contentTypeDefinitionsResponse.status === 403) {
             throw new Error(`We couldn't authorize you in API. Check if you specified correct API token (if you don't know what it is check: https://flotiq.com/docs/API/)`)
         } else throw new Error(await contentTypeDefinitionsResponse.text())
-        
-    }
-} 
 
-module.exports.getDeletedObjects = async function (gatsbyFunctions, options, since, contentTypes, handleDeletedId) {
+    }
+}
+
+module.exports.getDeletedObjects = async function (gatsbyFunctions, apiUrl, since, contentTypes, handleDeletedId) {
     let removed = 0;
     const { reporter } = gatsbyFunctions;
-    const {
-        baseUrl
-    } = options;
     await Promise.all(contentTypes.map(async ctd => {
-        
-        let url = baseUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(since);
+
+        let url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(since);
         response = await fetch(url, {headers: createHeaders(options)});
         reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
         if (response.ok) {
@@ -50,26 +46,25 @@ module.exports.getDeletedObjects = async function (gatsbyFunctions, options, sin
                 return await handleDeletedId(ctd, id)
             }));
         }
-        
+
     }));
 
     return removed;
 }
 
-module.exports.getContentObjects = async function (gatsbyFunctions, options, since, contentTypes, handleObject) {
+module.exports.getContentObjects = async function (gatsbyFunctions, options, since, contentTypes, apiUrl, handleObject) {
     const { reporter, getNodesByType } = gatsbyFunctions;
 
     const {
-        baseUrl,
         objectLimit = 100000,
         timeout = 5000
     } = options;
-    
+
     let {
         singleFetchLimit = 1000,
         maxConcurrentDataDownloads = 10
     } = options;
-    
+
     maxConcurrentDataDownloads = Math.max(Math.min(maxConcurrentDataDownloads, 50), 1)  // 1 <= maxConcurrentDataDownloads  <= 50
     singleFetchLimit = Math.max(Math.min(singleFetchLimit, 5000), 1);                   // 1 <= singleFetchLimit            <= 5000
 
@@ -77,7 +72,7 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
     let downloadJobs = contentTypes.map(ctd => {
         let currentNodeCount = 0;
         let limitPerPage = Math.min(singleFetchLimit, objectLimit);
-        let url = baseUrl + '/api/v1/content/' + ctd.name + '?limit=' + limitPerPage + '';
+        let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + limitPerPage + '';
 
         if (since) {
             currentNodeCount = getNodesByType(capitalize(ctd.name)).count;
@@ -88,9 +83,9 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
                 }
             }))
         }
-        
+
         return {
-            baseUrl: url,
+            apiUrl: url,
             objectLimit: objectLimit - currentNodeCount,
             limitPerPage,
             page: 1,
@@ -100,13 +95,13 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
 
     const dataLoadCount = {}
 
-    await workers(downloadJobs, maxConcurrentDataDownloads, async ({baseUrl, objectLimit, page, ctd, totalPages, limitPerPage}) => {
-        const url = `${baseUrl}&page=${page}`;
+    await workers(downloadJobs, maxConcurrentDataDownloads, async ({apiUrl, objectLimit, page, ctd, totalPages, limitPerPage}) => {
+        const url = `${apiUrl}&page=${page}`;
         const humanizedPageNumber = page === 1 ? 'first page' : `${page}/${totalPages}`
 
         reporter.info(`Fetching${since ? ' updates' : ''}: ${ctd.name} ${humanizedPageNumber}`)
         let response = await fetch(url, {headers: createHeaders(options), timeout: timeout});
-        if (!response.ok) 
+        if (!response.ok)
         {
             reporter.warn('Error fetching data', response);
             return;
@@ -114,7 +109,7 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
 
         const json = await response.json();
         totalPages = json.total_pages;
-        dataLoadCount[ctd.name] = dataLoadCount[ctd.name] || 0; 
+        dataLoadCount[ctd.name] = dataLoadCount[ctd.name] || 0;
         await Promise.all(json.data.map(async datum => {
             changed++;
             dataLoadCount[ctd.name]++;
@@ -127,8 +122,8 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
             let pageLimit = Math.min(json.total_pages, maxAllowedPages);
             for(let i = page + 1; i <= pageLimit; i++) {
               downloadJobs.push({
-                baseUrl, objectLimit, page: i, ctd, totalPages: pageLimit
-              }) 
+                  apiUrl, objectLimit, page: i, ctd, totalPages: pageLimit
+              })
             }
         }
     })

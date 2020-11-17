@@ -21,19 +21,19 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
     const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
     const {
-        baseUrl,
+        baseUrl = "https://api.flotiq.com/",
         authToken,
         forceReload,
         includeTypes = null,
         resolveMissingRelations = true,
         downloadMediaFile = false
     } = options;
-    
+
     createNodeGlobal = createNode;
     resolveMissingRelationsGlobal = resolveMissingRelations;
     downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
-    
+
     if (!apiUrl) {
         reporter.panic('FLOTIQ: You must specify API url ' +
             '(in most cases it is "https://api.flotiq.com")');
@@ -51,7 +51,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             setPluginStatus({'updated_at': null});
         }
         let lastUpdate = store.getState().status.plugins['gatsby-source-flotiq'];
-        
+
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
@@ -60,20 +60,20 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             lastUpdate = undefined;
         }
 
-        const contentTypeDefsData = await getContentTypes(options);
+        const contentTypeDefsData = await getContentTypes(options, apiUrl);
         createTypeDefs(contentTypeDefsData, schema);
 
         let changed = 0;
         let removed = 0;
-        
+
         if (lastUpdate && lastUpdate.updated_at) {
-            removed = await getDeletedObjects(gatsbyFunctions, options, lastUpdate.updated_at, contentTypeDefsData, async (ctd, id) => {
+            removed = await getDeletedObjects(gatsbyFunctions, apiUrl, lastUpdate.updated_at, contentTypeDefsData, async (ctd, id) => {
                 let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
                 return await deleteNode({node});
             });
         }
 
-        changed = await getContentObjects(gatsbyFunctions, options, lastUpdate && lastUpdate.updated_at, contentTypeDefsData, async (ctd, datum) => {
+        changed = await getContentObjects(gatsbyFunctions, options, lastUpdate && lastUpdate.updated_at, contentTypeDefsData, apiUrl,async (ctd, datum) => {
             return createNode({
                 ...datum,
                 // custom
@@ -88,7 +88,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
                 },
             });
         })
-        
+
         if (changed) {
             reporter.info('Updated entries ' + changed);
         }
