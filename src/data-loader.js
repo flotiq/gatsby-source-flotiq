@@ -31,7 +31,7 @@ module.exports.getContentTypes = async function (options, apiUrl) {
     }
 }
 
-module.exports.getDeletedObjects = async function (gatsbyFunctions, apiUrl, since, contentTypes, handleDeletedId) {
+module.exports.getDeletedObjects = async function (gatsbyFunctions, options, since, contentTypes, apiUrl, handleDeletedId) {
     let removed = 0;
     const { reporter } = gatsbyFunctions;
     await Promise.all(contentTypes.map(async ctd => {
