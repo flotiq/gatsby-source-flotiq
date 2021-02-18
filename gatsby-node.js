@@ -73,7 +73,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             });
         }
 
-        changed = await getContentObjects(gatsbyFunctions, options, lastUpdate && lastUpdate.updated_at, contentTypeDefsData, apiUrl,async (ctd, datum) => {
+        changed = await getContentObjects(gatsbyFunctions, options, lastUpdate && lastUpdate.updated_at, contentTypeDefsData, apiUrl, async (ctd, datum) => {
             return createNode({
                 ...datum,
                 // custom
@@ -99,7 +99,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
             'updated_at':
                 (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')
         });
-    } catch(e) {
+    } catch (e) {
         reporter.panic('FLOTIQ: ' + e.message)
     }
 
@@ -330,12 +330,13 @@ const createSrcSetFixed = (apiUrl, source, args) => {
 }
 
 
-
 const getType = (propertyConfig, required, property, ctdName) => {
+
     switch (propertyConfig.inputType) {
         case 'text':
         case 'textarea':
         case 'richtext':
+        case 'textMarkdown':
         case 'email':
         case 'radio':
         case 'select':
