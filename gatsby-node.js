@@ -120,19 +120,59 @@ exports.createSchemaCustomization = ({actions}) => {
             lat: Float
             lon: Float
         }
+        type FlotiqBlock {
+            time: String
+            version: String
+            blocks: [FlotiqBlock2]
+        }
+        type FlotiqBlock2 {
+            id: String
+            type: String
+            data: FlotiqBlockData
+            tunes: FlotiqBlockTunes
+        }
+        type FlotiqBlockData {
+            text: String
+            level: Float
+            anchor: String
+            items: [FlotiqBlockItems]
+            style: String
+            url: String
+            width: String
+            height: String
+            fileName: String
+            extension: String
+            caption: String
+            stretched: String
+            withBorder: String
+            withBackground: String
+            message: String
+            title: String
+            alignment: String
+        }
+        type FlotiqBlockTunes {
+            alignmentTuneTool: FlotiqBlockAlignementTune
+        }
+        type FlotiqBlockAlignementTune {
+            alignment: String
+        }
+        type FlotiqBlockItems {
+            items: [FlotiqBlockItems]
+            content: String
+        }
         type FlotiqImageFixed implements Node {
-            aspectRatio: Float,
-            width: Float,
-            height: Float,
-            src: String,
-            srcSet: String,
+            aspectRatio: Float
+            width: Float
+            height: Float
+            src: String
+            srcSet: String
             originalName: String
         }
         type FlotiqImageFluid implements Node {
-            aspectRatio: Float,
-            src: String,
-            srcSet: String,
-            originalName: String,
+            aspectRatio: Float
+            src: String
+            srcSet: String
+            originalName: String
             sizes: String
         }`);
         createTypes(typeDefs);
@@ -340,6 +380,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'email':
         case 'radio':
         case 'select':
+        default:
             return 'String' + (required ? '!' : '');
         case 'number':
             return 'Int' + (required ? '!' : '');
@@ -403,5 +444,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
             };
         case 'object':
             return '[' + capitalize(property) + ctdName + ']';
+        case 'block':
+            return 'FlotiqBlock'
     }
 };
