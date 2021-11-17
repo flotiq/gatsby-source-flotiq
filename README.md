@@ -94,7 +94,7 @@ query MyQuery {
     nodes {
       headerImage {
         gatsbyImageData(height: 1000, width: 1000)
-        extenstion
+        extension
         url
       }
     }
@@ -109,8 +109,8 @@ const post = this.props.data.blogpost;
 const image = getImage(post.headerImage[0])
 //...
 {post.headerImage[0].extension !== 'svg' ?
-    (<GatsbyImage image={image} alt="post image />)
-    : (<img src={`https://api.flotiq.com${post.headerImage[0].url}`} alt="post image")
+    (<GatsbyImage image={image} alt="post image" />) :
+    (<img src={`https://api.flotiq.com${post.headerImage[0].url}`} alt="post image" />)
 }
 ```
 You need a fallback for svg images because gatsby-plugin-image do not display them correctly.
