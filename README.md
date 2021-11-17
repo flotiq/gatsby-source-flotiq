@@ -40,7 +40,7 @@ module.exports = {
   // ...
   plugins: [
     {
-      resolve: "gatsby-source-flotiq",		  
+      resolve: 'gatsby-source-flotiq',		  
         options: {
             baseUrl: process.env.GATSBY_FLOTIQ_BASE_URL,
             authToken: process.env.GATSBY_FLOTIQ_API_KEY,
@@ -53,9 +53,10 @@ module.exports = {
             resolveMissingRelations: true, //optional, if the limit of objects is small some of the objects in relations could not be obtained from server, it this option is true they will be obtained as the graphQL queries in project would be resolved, if false, the missing object would resolve to null
             downloadMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
         },
-    }, 
-    `gatsby-plugin-image`,
-    `gatsby-plugin-sharp`,
+    },
+    'gatsby-plugin-image',
+    'gatsby-plugin-sharp',
+    'gatsby-transformer-sharp'
   ],
   // ...
 }
