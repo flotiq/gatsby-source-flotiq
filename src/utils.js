@@ -8,10 +8,8 @@ module.exports.createHeaders = (options) => {
         authToken
     } = options;
 
-    
-    let headers = {
+    return {
         'accept': 'application/json',
         'X-AUTH-TOKEN': authToken
     };
-    return headers;
 };

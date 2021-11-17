@@ -17,10 +17,8 @@ module.exports.getContentTypes = async function (options, apiUrl) {
 
     if (contentTypeDefinitionsResponse.ok) {
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
-        const contentTypeDefsData = contentTypeDefinitions.data.filter(
-            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1);
-
-        return contentTypeDefsData
+        return contentTypeDefinitions.data.filter(
+            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1)
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
             throw new Error(`We couldn't connect to API. Check if you specified correct API url (in most cases it is "https://api.flotiq.com")`)
@@ -37,7 +35,7 @@ module.exports.getDeletedObjects = async function (gatsbyFunctions, options, sin
     await Promise.all(contentTypes.map(async ctd => {
 
         let url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(since);
-        response = await fetch(url, {headers: createHeaders(options)});
+        let response = await fetch(url, {headers: createHeaders(options)});
         reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
         if (response.ok) {
             const jsonRemoved = await response.json();
