@@ -62,7 +62,7 @@ module.exports = {
 ### Parameters
 
 * `baseUrl` - url to the Flotiq API (in most cases `https://api.flotiq.com`)
-* `authToke` - API token, if you wish to only pull data from Flotiq it can be Red-only key, if you need to put data it has to be Read-write key, more about Flotiq API keys [here](https://flotiq.com/docs/API/)
+* `authToken` - API token, if you wish to only pull data from Flotiq it can be Red-only key, if you need to put data it has to be Read-write key, more about Flotiq API keys [here](https://flotiq.com/docs/API/)
 * `forceRelaod` - indicates if the data should be pulled in full or plugin should use cache (`true` for full pull, `false` for cache usage)
 * `includeTypes` - array of Content Type Definitions used in the project (if you use images or files pulled from Flotiq, you must include `_media` CTD)
 * `objectsLimit` - if you wish to not pull all objects from Flotiq (e.g. in development to speed up reload), you can limit it using this parameter. This will limit the total number of downloaded objects. In production it should be higher than number of object in any Content Type pulled to project
