@@ -123,8 +123,9 @@ query MyQuery {
       headerImage {
         localFile {
           extension
+          url
           childImageSharp {
-            gatsbyImageData
+            gatsbyImageData(width: 1000, height: 1000)
           }
         }
       }
@@ -138,9 +139,9 @@ import { GatsbyImage, getImage } from "gatsby-plugin-image"
 //...
 const post = this.props.data.blogpost;
 //...
-{post.headerImage[0].extension !== 'svg' ?
-    (<GatsbyImage image={image} alt="post image />)
-    : (<img src={`https://api.flotiq.com${post.headerImage[0].url}`} alt="post image")
+{post.headerImage[0].localFile.extension !== 'svg' ?
+    (<GatsbyImage image={getImage(post.headerImage[0].localFile)} alt="post image" />) :
+    (<img src={`https://api.flotiq.com${post.headerImage[0].localFile.url}`} alt="post image" />)
 }
 ```
 
