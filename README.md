@@ -121,9 +121,9 @@ query MyQuery {
   allBlogpost {
     nodes {
       headerImage {
+        extension
+        url
         localFile {
-          extension
-          url
           childImageSharp {
             gatsbyImageData(width: 1000, height: 1000)
           }
