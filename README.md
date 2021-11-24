@@ -28,7 +28,7 @@ Get up and running in minutes with a starter project:
 
 Add Gatsby Source Flotiq plugin to your project:
 ```bash
-npm install --save gatsby-source-flotiq
+npm install --save gatsby-source-flotiq gatsby-plugin-image gatsby-plugin-sharp gatsby-transformer-sharp
 ```
 
 Enable and configure plugin:
@@ -40,7 +40,7 @@ module.exports = {
   // ...
   plugins: [
     {
-      resolve: "gatsby-source-flotiq",		  
+      resolve: 'gatsby-source-flotiq',		  
         options: {
             baseUrl: process.env.GATSBY_FLOTIQ_BASE_URL,
             authToken: process.env.GATSBY_FLOTIQ_API_KEY,
@@ -54,6 +54,9 @@ module.exports = {
             downloadMediaFile: false //optional, should media files be cached and be available for gatsby-image and gatsby-sharp
         },
     },
+    'gatsby-plugin-image',
+    'gatsby-plugin-sharp',
+    'gatsby-transformer-sharp'
   ],
   // ...
 }
@@ -90,19 +93,9 @@ query MyQuery {
   allBlogpost {
     nodes {
       headerImage {
-        fixed(height: 1000, width: 1000) {
-          aspectRatio
-          height
-          width
-          src
-          srcSet
-        }
-        fluid(maxWidth: 1000) {
-          src
-          srcSet
-          aspectRatio
-          originalName
-        }
+        gatsbyImageData(height: 1000, width: 1000)
+        extension
+        url
       }
     }
   }
@@ -110,28 +103,29 @@ query MyQuery {
 ```
 
 ```
-import Img from "gatsby-image";
+import { GatsbyImage, getImage } from "gatsby-plugin-image"
 //...
 const post = this.props.data.blogpost;
+const image = getImage(post.headerImage[0])
 //...
-<Img fluid={post.headerImage[0].fluid}/>
-<Img fixed={post.headerImage[0].fixed}/>
+{post.headerImage[0].extension !== 'svg' ?
+    (<GatsbyImage image={image} alt="post image" />) :
+    (<img src={`https://api.flotiq.com${post.headerImage[0].url}`} alt="post image" />)
+}
 ```
+You need a fallback for svg images because gatsby-plugin-image do not display them correctly.
 
-If you are using `downloadMediaFile` as `true`, you can use full potential of gatsby-image and gatsby-image-sharp. You can use them like that (assuming you have blogpost Content Type with headerImage media property):
+If you are using `downloadMediaFile` as `true`, you can use full potential of gatsby-plugin-image and gatsby-image-sharp. You can use them like that (assuming you have blogpost Content Type with headerImage media property):
 ```
 query MyQuery {
   allBlogpost {
     nodes {
       headerImage {
+        extension
+        url
         localFile {
           childImageSharp {
-            fixed(height: 1000, width: 1000) {
-              ...GatsbyImageSharpFixed
-            }
-            fluid(maxWidth: 1000) {
-              ...GatsbyImageSharpFluid
-            }
+            gatsbyImageData(width: 1000, height: 1000)
           }
         }
       }
@@ -141,13 +135,19 @@ query MyQuery {
 ```
 
 ```
-import Img from "gatsby-image";
+import { GatsbyImage, getImage } from "gatsby-plugin-image"
 //...
 const post = this.props.data.blogpost;
 //...
-<Img fluid={post.headerImage[0].localFile.childImageSharp.fluid}/>
-<Img fixed={post.headerImage[0].localFile.childImageSharp.fixed}/>
+{post.headerImage[0].localFile.extension !== 'svg' ?
+    (<GatsbyImage image={getImage(post.headerImage[0].localFile)} alt="post image" />) :
+    (<img src={`https://api.flotiq.com${post.headerImage[0].localFile.url}`} alt="post image" />)
+}
 ```
+
+You need a fallback for svg images because gatsby-plugin-image do not display them correctly.
+
+You can learn more about [Gatsby Image plugin here](https://www.gatsbyjs.com/docs/reference/built-in-components/gatsby-plugin-image/).
 
 ## Collaboration
 

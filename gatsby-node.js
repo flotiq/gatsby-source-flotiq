@@ -1,5 +1,7 @@
 const fetch = require('node-fetch');
 const {createContentDigest} = require(`gatsby-core-utils`);
+const { getGatsbyImageResolver } = require("gatsby-plugin-image/graphql-utils");
+const { generateImageData, getLowResolutionImageURL } = require("gatsby-plugin-image");
 const {getContentTypes, getDeletedObjects, getContentObjects} = require('./src/data-loader');
 const {capitalize} = require('./src/utils')
 
@@ -209,6 +211,12 @@ exports.createResolvers = ({
                 }
             }
         })
+    } else {
+        createResolvers({
+            _media: {
+                gatsbyImageData: getGatsbyImageResolver(resolveGatsbyImageData),
+            },
+        })
     }
 }
 
@@ -245,129 +253,12 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
                 typeDefs.push(schema.buildObjectType(additionalDef));
             }
         });
-        if (ctd.name === '_media' && !downloadMediaFileGlobal) {
-            tmpDef.fields.fixed = {
-                type: 'FlotiqImageFixed',
-                args: {
-                    width: 'Int',
-                    height: 'Int'
-                },
-                resolve(source, args) {
-                    let width = 0;
-                    let height = 0;
-                    if (args.width) {
-                        width = args.width;
-                    }
-                    if (args.height) {
-                        height = args.height
-                    }
-                    return {
-                        aspectRatio: (args.width && args.height) ? (args.width / args.height) : (source.width / source.height),
-                        height: args.height ? args.height : source.height,
-                        originalName: source.id + '.' + source.extension,
-                        src: apiUrl + source.url.replace('0x0', width + 'x' + height),
-                        srcSet: createSrcSetFixed(apiUrl, source, args),
-                        width: args.width ? args.width : source.width,
-                    }
-                }
-            };
-            tmpDef.fields.fluid = {
-                type: 'FlotiqImageFluid',
-                args: {
-                    maxWidth: 'Int',
-                    sizes: 'String'
-                },
-                resolve(source, args) {
-                    return {
-                        aspectRatio: source.width / source.height,
-                        originalName: source.id + '.' + source.extension,
-                        src: apiUrl + (args.maxWidth ? source.url.replace('0x0', args.maxWidth + 'x0') : source.url),
-                        srcSet: createSrcSetFluid(apiUrl, source, args),
-                        sizes: args.sizes ? args.sizes : '(max-width: ' + (args.maxWidth ? args.maxWidth : source.width) + 'px) 100vw, ' + (args.maxWidth ? args.maxWidth : source.width) + 'px'
-                    }
-                }
-            };
-        }
 
         tmpDef.fields.flotiqInternal = `FlotiqInternal!`;
         typeDefs.push(schema.buildObjectType(tmpDef));
     });
     typeDefinitionsDeferred.resolve(typeDefs);
 };
-
-const createSrcSetFluid = (apiUrl, source, args) => {
-    let array = [];
-    if (!args.maxWidth) {
-        if (source.width >= 200) {
-            array.push(apiUrl + '/image/200x0/' + source.id + '.' + source.extension + ' 200w');
-            if (source.width >= 400) {
-                array.push(apiUrl + '/image/400x0/' + source.id + '.' + source.extension + ' 400w');
-                if (source.width >= 800) {
-                    array.push(apiUrl + '/image/800x0/' + source.id + '.' + source.extension + ' 800w');
-                    if (source.width >= 1200) {
-                        array.push(apiUrl + '/image/1200x0/' + source.id + '.' + source.extension + ' 1200w');
-                        if (source.width >= 1600) {
-                            array.push(apiUrl + '/image/1600x0/' + source.id + '.' + source.extension + ' 1600w');
-                            if (source.width >= 1920) {
-                                array.push(apiUrl + '/image/1920x0/' + source.id + '.' + source.extension + ' 1920w');
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        if (args.maxWidth <= source.width) {
-            let per25 = args.maxWidth / 4;
-            let per50 = args.maxWidth / 2;
-            let per150 = args.maxWidth * 1.5;
-            let per200 = args.maxWidth * 2;
-            array.push(apiUrl + '/image/' + Math.floor(per25) + 'x0/' + source.id + '.' + source.extension + ' ' + per25 + 'w');
-            array.push(apiUrl + '/image/' + Math.floor(per50) + 'x0/' + source.id + '.' + source.extension + ' ' + per50 + 'w');
-            array.push(apiUrl + '/image/' + args.maxWidth + 'x0/' + source.id + '.' + source.extension + ' ' + args.maxWidth + 'w');
-            if (per150 <= source.width) {
-                array.push(apiUrl + '/image/' + Math.floor(per150) + 'x0/' + source.id + '.' + source.extension + ' ' + per150 + 'w');
-                if (per200 <= source.width) {
-                    array.push(apiUrl + '/image/' + Math.floor(per200) + 'x0/' + source.id + '.' + source.extension + ' ' + per200 + 'w');
-                }
-            }
-        } else {
-            let per25 = args.maxWidth / 4;
-            if (per25 < source.width) {
-                array.push(apiUrl + '/image/' + Math.floor(per25) + 'x0/' + source.id + '.' + source.extension + ' ' + per25 + 'w');
-                let per50 = args.maxWidth / 2;
-                if (per50 < source.width) {
-                    array.push(apiUrl + '/image/' + Math.floor(per50) + 'x0/' + source.id + '.' + source.extension + ' ' + per50 + 'w');
-                }
-            }
-
-            array.push(apiUrl + '/image/' + source.width + 'x0/' + source.id + '.' + source.extension + ' ' + source.width + 'w');
-        }
-    }
-    return array.join(',\n')
-}
-
-const createSrcSetFixed = (apiUrl, source, args) => {
-    let width = 0;
-    let height = 0;
-    if (args.width) {
-        width = args.width;
-    }
-    if (args.height) {
-        height = args.height
-    }
-    let array = [
-        apiUrl + '/image/' + width + 'x' + height + '/' + source.id + '.' + source.extension + ' 1x'
-    ];
-    if (width * 1.5 <= source.width && height * 1.5 <= source.height) {
-        array.push(apiUrl + '/image/' + width * 1.5 + 'x' + height * 1.5 + '/' + source.id + '.' + source.extension + ' 1.5x');
-        if (width * 2 <= source.width && height * 2 <= source.height) {
-            array.push(apiUrl + '/image/' + width * 2 + 'x' + height * 2 + '/' + source.id + '.' + source.extension + ' 2x');
-        }
-    }
-
-    return array.join(',\n')
-}
 
 
 const getType = (propertyConfig, required, property, ctdName) => {
@@ -448,3 +339,33 @@ const getType = (propertyConfig, required, property, ctdName) => {
             return 'FlotiqBlock'
     }
 };
+
+const generateImageSource = (baseURL, width = 0, height = 0, format, fit, options) => {
+    const src = `https://api.flotiq.com/image/${width || options.width}x${height || options.height}/${baseURL}.${format}`
+    return {src, width, height, format}
+}
+
+
+const resolveGatsbyImageData = async (image, options) => {
+    const filename = image.id
+    const sourceMetadata = {
+        width: image.width,
+        height: image.height,
+        format: image.extension
+    }
+    const imageDataArgs = {
+        ...options,
+        pluginName: `gatsby-source-flotiq`,
+        sourceMetadata,
+        filename,
+        placeholderURL: '',
+        generateImageSource,
+        formats: [image.extension],
+        options: {...options, extension: image.extension},
+    }
+    // if(options.placeholder === "blurred") {
+    //     const lowResImage = getLowResolutionImageURL(imageDataArgs)
+    //     imageDataArgs.placeholderURL =  await getBase64Image(lowResImage)
+    // }
+    return generateImageData(imageDataArgs)
+}
