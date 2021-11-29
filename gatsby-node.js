@@ -151,6 +151,9 @@ exports.createSchemaCustomization = ({actions}) => {
             message: String
             title: String
             alignment: String
+            code: String
+            withHeadings: Boolean
+            content: [[String]]
         }
         type FlotiqBlockTunes {
             alignmentTuneTool: FlotiqBlockAlignementTune
