@@ -2,8 +2,8 @@ const fetch = require('node-fetch');
 const {createContentDigest} = require(`gatsby-core-utils`);
 const { getGatsbyImageResolver } = require("gatsby-plugin-image/graphql-utils");
 const { generateImageData, getLowResolutionImageURL } = require("gatsby-plugin-image");
-const {getContentTypes, getDeletedObjects, getContentObjects} = require('./src/data-loader');
-const {capitalize} = require('./src/utils')
+const { getContentTypes, getDeletedObjects, getContentObjects } = require('./src/data-loader');
+const { capitalize, createHeaders } = require('./src/utils')
 
 const digest = str => createContentDigest(str);
 
@@ -17,6 +17,7 @@ let typeDefinitionsPromise = new Promise((resolve, reject) => {
 let createNodeGlobal;
 let resolveMissingRelationsGlobal;
 let downloadMediaFileGlobal = false;
+let headers = {};
 
 exports.sourceNodes = async (gatsbyFunctions, options) => {
 
@@ -30,6 +31,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         resolveMissingRelations = true,
         downloadMediaFile = false
     } = options;
+    headers = createHeaders(options);
 
     createNodeGlobal = createNode;
     resolveMissingRelationsGlobal = resolveMissingRelations;
