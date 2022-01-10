@@ -18,15 +18,14 @@ let createNodeGlobal;
 let resolveMissingRelationsGlobal;
 let downloadMediaFileGlobal = false;
 let headers = {};
+let globalSchema = {};
+let contentTypeDefsData = [];
 
-exports.sourceNodes = async (gatsbyFunctions, options) => {
-
-    const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
-    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
+exports.onPluginInit = async ({actions, schema, reporter}, options) => {
+    const {createNode} = actions;
     const {
         baseUrl = "https://api.flotiq.com",
         authToken,
-        forceReload,
         includeTypes = null,
         resolveMissingRelations = true,
         downloadMediaFile = false
@@ -37,6 +36,8 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     resolveMissingRelationsGlobal = resolveMissingRelations;
     downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
+    globalSchema = schema;
+    contentTypeDefsData = await getContentTypes(options, apiUrl);
 
     if (!apiUrl) {
         reporter.panic('FLOTIQ: You must specify API url ' +
@@ -50,6 +51,14 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     if (includeTypes && (!Array.isArray(includeTypes) || typeof includeTypes[0] !== "string")) {
         reporter.panic("FLOTIQ: `includeTypes` should be an array of content type api names. It cannot be empty.");
     }
+}
+
+exports.sourceNodes = async (gatsbyFunctions, options) => {
+
+    const {actions, store, getNodes, reporter, schema} = gatsbyFunctions;
+    const {createNode, setPluginStatus, touchNode, deleteNode} = actions;
+    const {forceReload} = options;
+
     try {
         if (forceReload) {
             setPluginStatus({'updated_at': null});
@@ -63,9 +72,6 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         if (!existingNodes.length) {
             lastUpdate = undefined;
         }
-
-        const contentTypeDefsData = await getContentTypes(options, apiUrl);
-        createTypeDefs(contentTypeDefsData, schema);
 
         let changed = 0;
         let removed = 0;
@@ -110,8 +116,9 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
     return {};
 };
 
-exports.createSchemaCustomization = ({actions}) => {
+exports.createSchemaCustomization = ({actions}, options) => {
     const {createTypes} = actions;
+    createTypeDefs(contentTypeDefsData, globalSchema);
 
     typeDefinitionsPromise.then(typeDefs => {
         typeDefs.push(`type FlotiqInternal {
