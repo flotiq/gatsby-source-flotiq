@@ -9,7 +9,7 @@ module.exports.getContentTypes = async function (options, apiUrl) {
     } = options;
 
     let contentTypeDefinitionsResponse = await fetch(
-        apiUrl + '/api/v1/internal/contenttype?limit=10000&order_by=label',
+         `${apiUrl}/api/v1/internal/contenttype?limit=10000&order_by=label`,
         {
             headers: createHeaders(options),
             timeout: timeout
@@ -34,7 +34,7 @@ module.exports.getDeletedObjects = async function (gatsbyFunctions, options, sin
     const { reporter } = gatsbyFunctions;
     await Promise.all(contentTypes.map(async ctd => {
 
-        let url = apiUrl + '/api/v1/content/' + ctd.name + '/removed?deletedAfter=' + encodeURIComponent(since);
+        let url = `${apiUrl}/api/v1/content/${ctd.name}/removed?deletedAfter=${encodeURIComponent(since)}`;
         let response = await fetch(url, {headers: createHeaders(options)});
         reporter.info(`Fetching removed content type ${ctd.name}: ${url}`);
         if (response.ok) {

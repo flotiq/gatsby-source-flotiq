@@ -80,7 +80,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
 
         if (lastUpdate && lastUpdate.updated_at) {
             removed = await getDeletedObjects(gatsbyFunctions, options, lastUpdate.updated_at, contentTypeDefsData, apiUrl, async (ctd, id) => {
-                let node = existingNodes.find(n => n.id === ctd.name + '_' + id);
+                let node = existingNodes.find(n => n.id === `${ctd.name}_${id}`);
                 return await deleteNode({node});
             });
         }
@@ -91,7 +91,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
                 // custom
                 flotiqInternal: datum.internal,
                 // required
-                id: ctd.name === '_media' ? datum.id : ctd.name + '_' + datum.id,
+                id: ctd.name === '_media' ? datum.id : `${ctd.name}_${datum.id}`,
                 parent: null,
                 children: [],
                 internal: {
@@ -102,17 +102,17 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         })
 
         if (changed) {
-            reporter.info('Updated entries ' + changed);
+            reporter.info(`Updated entries ${changed}`);
         }
         if (removed) {
-            reporter.info('Removed entries ' + removed);
+            reporter.info(`Removed entries ${removed}`);
         }
         setPluginStatus({
             'updated_at':
                 (new Date()).toISOString().replace(/T/, ' ').replace(/\..+/, '')
         });
     } catch (e) {
-        reporter.panic('FLOTIQ: ' + e.message)
+        reporter.panic(`FLOTIQ: ${e.message}`)
     }
 
     return {};
@@ -219,7 +219,7 @@ exports.createResolvers = ({
                             createNode,
                             createNodeId,
                             reporter,
-                            ext: '.' + source.extension
+                            ext: `.${source.extension}`
                         });
                     }
                 }
@@ -299,7 +299,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
             let typeNonCapitalize = (propertyConfig.validation.relationContenttype !== '_media' ?
                 propertyConfig.validation.relationContenttype : '_media');
             return {
-                type: '[' + type + ']',
+                type: `[${type}]`,
                 resolve: async (source, args, context, info) => {
                     if (source[property]) {
                         let nodes = await Promise.all(source[property].map(async (prop) => {
@@ -322,7 +322,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                         // custom
                                         flotiqInternal: json.internal,
                                         // required
-                                        id: typeNonCapitalize === '_media' ? json.id : typeNonCapitalize + '_' + json.id,
+                                        id: typeNonCapitalize === '_media' ? json.id : `${typeNonCapitalize}_${json.id}`,
                                         parent: null,
                                         children: [],
                                         internal: {
@@ -348,7 +348,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                 }
             };
         case 'object':
-            return '[' + capitalize(property) + ctdName + ']';
+            return `[${capitalize(property)}${ctdName}]`;
         case 'block':
             return 'FlotiqBlock'
     }
