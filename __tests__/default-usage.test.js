@@ -76,16 +76,15 @@ describe('sourceNodes', () => {
     test('Downloads the data from scratch', async () => {
         const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
         const gatsbyFunctions = {
-            actions: actions,
+            actions,
             store: {getState: jest.fn(_ => {return { status: {plugins: {}} }})},
             getNodes: jest.fn().mockName('getNodes').mockReturnValue([]),
             reporter: createObjectWithMethods(['info','panic','warn']),
             schema: createObjectWithMethods(['buildObjectType'])
         };
-
+        const baseUrl = 'https://api.flotiq.com';
         const options = {
             authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg',
-            baseUrl: 'https://api.flotiq.com',
             contentTypeDefinitions: [CTD1]
         };
 
@@ -97,7 +96,7 @@ describe('sourceNodes', () => {
 
         when(fetch)
             .expectCalledWith(
-                expect.stringContaining(`${options.baseUrl}/api/v1/content/Type-1-name?limit=1000&page=1`),
+                expect.stringContaining(`${baseUrl}/api/v1/content/Type-1-name?limit=1000&page=1`),
                 expectedHeaders
             )
             .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)));
@@ -160,7 +159,7 @@ describe('sourceNodes', () => {
             const LAST_UPDATE = '2020-01-01T00:00:00Z';
             const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
             const gatsbyFunctions = {
-                actions: actions,
+                actions,
                 store: {getState: jest.fn(_ => {return { status: {plugins: {
                     'gatsby-source-flotiq': {
                         updated_at: LAST_UPDATE
