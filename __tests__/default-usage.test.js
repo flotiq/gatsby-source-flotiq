@@ -156,8 +156,9 @@ describe('sourceNodes', () => {
         });
 
         test('Updates only new data', async () => {
-            const LAST_UPDATE = '2020-01-01T00:00:00Z';
             const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
+            const LAST_UPDATE = '2020-01-01T00:00:00Z';
+
             const gatsbyFunctions = {
                 actions,
                 store: {getState: jest.fn(_ => {return { status: {plugins: {
