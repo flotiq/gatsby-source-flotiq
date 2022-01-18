@@ -70,7 +70,7 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
     let downloadJobs = contentTypes.map(ctd => {
         let currentNodeCount = 0;
         let limitPerPage = Math.min(singleFetchLimit, objectLimit);
-        let url = apiUrl + '/api/v1/content/' + ctd.name + '?limit=' + limitPerPage + '';
+        let url = `${apiUrl}/api/v1/content/${ctd.name }?limit=${limitPerPage}`;
 
         if (since) {
             currentNodeCount = getNodesByType(capitalize(ctd.name)).count;
@@ -119,9 +119,9 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
             let maxAllowedPages = Math.ceil(objectLimit/limitPerPage);
             let pageLimit = Math.min(json.total_pages, maxAllowedPages);
             for(let i = page + 1; i <= pageLimit; i++) {
-              downloadJobs.push({
-                  apiUrl, objectLimit, page: i, ctd, totalPages: pageLimit
-              })
+                downloadJobs.push({
+                    apiUrl, objectLimit, page: i, ctd, totalPages: pageLimit
+                })
             }
         }
     })

@@ -37,7 +37,9 @@ exports.onPluginInit = async ({actions, schema, reporter}, options) => {
     downloadMediaFileGlobal = downloadMediaFile;
     apiUrl = baseUrl;
     globalSchema = schema;
-    contentTypeDefsData = await getContentTypes(options, apiUrl);
+    if (authToken) {
+        contentTypeDefsData = await getContentTypes(options, apiUrl);
+    }
 
     if (!apiUrl) {
         reporter.panic('FLOTIQ: You must specify API url ' +
