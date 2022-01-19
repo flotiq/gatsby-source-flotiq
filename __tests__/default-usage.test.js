@@ -12,7 +12,7 @@ jest.mock('node-fetch');
 const fetch = require('node-fetch');
 const {Response} = jest.requireActual('node-fetch');
 
-const {sourceNodes} = require('../gatsby-node');
+const {sourceNodes, onPluginInit} = require('../gatsby-node');
 
 function createObjectWithMethods(functionNames) {
     return functionNames.reduce((acc, name) => {
@@ -24,6 +24,53 @@ function createObjectWithMethods(functionNames) {
 beforeEach(() => {
     resetAllWhenMocks()
 })
+describe('onPluginInit', () => {
+    test('Success Init plugin', async () => {
+        const gatsbyFunctions = {
+            actions: createObjectWithMethods(['createNode']),
+            reporter: createObjectWithMethods(['panic']),
+            schema: createObjectWithMethods(['buildObjectType'])
+        };
+        const options = {
+            baseUrl: "https://api.flotiq.com",
+            authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg',
+            contentTypeDefinitions: [],
+        };
+
+        const expectedHeaders = expect.objectContaining({
+            headers: expect.objectContaining({
+                'X-AUTH-TOKEN': options.authToken
+            })
+        })
+        when(fetch)
+            .expectCalledWith(
+                expect.stringContaining(`${options.baseUrl}/api/v1/internal/contenttype`),
+                expectedHeaders
+            )
+            .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
+
+        await onPluginInit(gatsbyFunctions, options);
+
+        verifyAllWhenMocksCalled()
+    });
+
+    test('Failed init plugin when no api key', async () => {
+        const reporter = createObjectWithMethods(['panic']);
+        const gatsbyFunctions = {
+            actions: createObjectWithMethods(['createNode']),
+            reporter: reporter,
+            schema: createObjectWithMethods(['buildObjectType'])
+        };
+        const options = {
+            authToken: '',
+            contentTypeDefinitions: [],
+        };
+
+        await onPluginInit(gatsbyFunctions, options);
+
+        expect(reporter.panic).toHaveBeenCalledTimes(1);
+    });
+});
 
 describe('sourceNodes', () => {
     test('Downloads the data from scratch', async () => {
@@ -37,7 +84,8 @@ describe('sourceNodes', () => {
         };
         const baseUrl = 'https://api.flotiq.com';
         const options = {
-            authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg'
+            authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg',
+            contentTypeDefinitions: [CTD1]
         };
 
         const expectedHeaders = expect.objectContaining({
@@ -47,18 +95,17 @@ describe('sourceNodes', () => {
         })
 
         when(fetch)
-            .expectCalledWith(expect.stringContaining(`${baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
-            .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
-
-        when(fetch)
-            .expectCalledWith(expect.stringContaining(`${baseUrl}/api/v1/content/${CTD1.name}`), expectedHeaders)
-            .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)))
+            .expectCalledWith(
+                expect.stringContaining(`${baseUrl}/api/v1/content/Type-1-name?limit=1000&page=1`),
+                expectedHeaders
+            )
+            .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)));
 
         await sourceNodes(gatsbyFunctions, options)
 
         verifyAllWhenMocksCalled()
-        expect(gatsbyFunctions.schema.buildObjectType).toHaveBeenCalledTimes(1)
-        expect(actions.createNode).toHaveBeenCalledWith(expect.objectContaining(CTD1_OBJECT1_DATA))
+        expect(actions.createNode).toHaveBeenCalledTimes(1);
+        expect(actions.setPluginStatus).toHaveBeenCalledTimes(1);
     });
 
     describe('When launched second time', () => {
@@ -81,9 +128,11 @@ describe('sourceNodes', () => {
                 reporter: createObjectWithMethods(['info','panic','warn']),
                 schema: createObjectWithMethods(['buildObjectType'])
             };
+
             const baseUrl = 'https://api.flotiq.com';
             const options = {
-                authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg'
+                authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg',
+                contentTypeDefinitions: [CTD1],
             };
 
             const expectedHeaders = expect.objectContaining({
@@ -91,10 +140,6 @@ describe('sourceNodes', () => {
                     'X-AUTH-TOKEN': options.authToken
                 })
             })
-
-            when(fetch)
-                .calledWith(expect.stringContaining(`${baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
-                .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
 
             when(fetch)
                 .calledWith(expect.stringMatching(`${baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
@@ -113,6 +158,7 @@ describe('sourceNodes', () => {
         test('Updates only new data', async () => {
             const actions = createObjectWithMethods(['createNode','setPluginStatus','touchNode','deleteNode']);
             const LAST_UPDATE = '2020-01-01T00:00:00Z';
+
             const gatsbyFunctions = {
                 actions,
                 store: {getState: jest.fn(_ => {return { status: {plugins: {
@@ -133,7 +179,8 @@ describe('sourceNodes', () => {
             };
             const baseUrl = 'https://api.flotiq.com';
             const options = {
-                authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg'
+                authToken: 'qweasdzxcrtyfghvbnqweasdzxcrtyfg',
+                contentTypeDefinitions: [CTD1],
             };
 
             const expectedHeaders = expect.objectContaining({
@@ -143,16 +190,16 @@ describe('sourceNodes', () => {
             })
 
             when(fetch)
-                .calledWith(expect.stringContaining(`${baseUrl}/api/v1/internal/contenttype`), expectedHeaders)
-                .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_STR}]}`)))
+                .calledWith(
+                    expect.stringMatching(`${baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`),
+                    expectedHeaders
+                ).mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)))
 
             when(fetch)
-                .calledWith(expect.stringMatching(`${baseUrl}/api/v1/content/${CTD1.name}.*updatedAt.*${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
-                .mockReturnValueOnce(Promise.resolve(new Response(`{"data": [${CTD1_OBJECT1_STR}]}`)))
-
-            when(fetch)
-                .calledWith(expect.stringMatching(`${baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`), expectedHeaders)
-                .mockReturnValueOnce(Promise.resolve(new Response(`[]`)))
+                .calledWith(
+                    expect.stringMatching(`${baseUrl}/api/v1/content/${CTD1.name}/removed\\?deletedAfter=${encodeURIComponent(LAST_UPDATE)}`),
+                    expectedHeaders
+                ).mockReturnValueOnce(Promise.resolve(new Response(`[]`)))
 
             await sourceNodes(gatsbyFunctions, options)
 
