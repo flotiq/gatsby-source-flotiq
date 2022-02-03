@@ -12,7 +12,7 @@
     "dependencies": {
         "gatsby-core-utils": "^3.4.0",
         "gatsby-source-filesystem": "^4.4.0",
-        "node-fetch": "^2.6.6"
+        "node-fetch": "^2.6.7"
     },
     "devDependencies": {
         "jest": "^27.4.5",
