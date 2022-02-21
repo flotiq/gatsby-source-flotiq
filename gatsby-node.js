@@ -70,7 +70,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         const existingNodes = getNodes().filter(
             n => n.internal.owner === `gatsby-source-flotiq`
         );
-        existingNodes.forEach(n => touchNode({nodeId: n.id, plugin: 'gatsby-source-flotiq'}));
+        existingNodes.forEach(n => touchNode(n));
         if (!existingNodes.length) {
             lastUpdate = undefined;
         }
