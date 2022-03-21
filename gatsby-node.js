@@ -296,8 +296,12 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
-            let type = propertyConfig.validation.relationContenttype ? (propertyConfig.validation.relationContenttype !== '_media' ?
-                capitalize(propertyConfig.validation.relationContenttype) : '_media') : 'AllTypes';
+            let type = 
+                propertyConfig.validation.relationContenttype
+                ? (propertyConfig.validation.relationContenttype !== '_media'
+                   ? capitalize(propertyConfig.validation.relationContenttype)
+                   : '_media')
+                : 'AllTypes';
             return {
                 type: `[${type}]`,
                 resolve: async (source, args, context, info) => {
@@ -307,8 +311,9 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return;
                             }
                             let node = {
-                                id: prop.dataUrl.split('/')[4] === '_media' ?
-                                    prop.dataUrl.split('/')[5] : prop.dataUrl.split('/')[4] + '_' + prop.dataUrl.split('/')[5],
+                                id: prop.dataUrl.split('/')[4] === '_media' 
+                                    ? prop.dataUrl.split('/')[5]
+                                    : prop.dataUrl.split('/')[4] + '_' + prop.dataUrl.split('/')[5],
                                 type: type,
                             };
                             let nodeModel = context.nodeModel.getNodeById(node);
@@ -322,7 +327,9 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                         // custom
                                         flotiqInternal: json.internal,
                                         // required
-                                        id: prop.dataUrl.split('/')[4] === '_media' ? json.id : `${prop.dataUrl.split('/')[4]}_${json.id}`,
+                                        id: prop.dataUrl.split('/')[4] === '_media' 
+                                            ? json.id 
+                                            : `${prop.dataUrl.split('/')[4]}_${json.id}`,
                                         parent: null,
                                         children: [],
                                         internal: {
