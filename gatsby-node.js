@@ -236,6 +236,8 @@ exports.createResolvers = ({
 
 const createTypeDefs = (contentTypesDefinitions, schema) => {
     let typeDefs = [];
+    const names = contentTypesDefinitions.map(ctd => capitalize(ctd.name));
+    typeDefs.push(`union AllTypes = ${names.join(' | ')}`);
     contentTypesDefinitions.forEach(ctd => {
         let tmpDef = {
             name: capitalize(ctd.name),
@@ -294,10 +296,12 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
-            let type = (propertyConfig.validation.relationContenttype !== '_media' ?
-                capitalize(propertyConfig.validation.relationContenttype) : '_media');
-            let typeNonCapitalize = (propertyConfig.validation.relationContenttype !== '_media' ?
-                propertyConfig.validation.relationContenttype : '_media');
+            let type = 
+                propertyConfig.validation.relationContenttype
+                ? (propertyConfig.validation.relationContenttype !== '_media'
+                   ? capitalize(propertyConfig.validation.relationContenttype)
+                   : '_media')
+                : 'AllTypes';
             return {
                 type: `[${type}]`,
                 resolve: async (source, args, context, info) => {
@@ -307,8 +311,9 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return;
                             }
                             let node = {
-                                id: typeNonCapitalize === '_media' ?
-                                    prop.dataUrl.split('/')[5] : typeNonCapitalize + '_' + prop.dataUrl.split('/')[5],
+                                id: prop.dataUrl.split('/')[4] === '_media' 
+                                    ? prop.dataUrl.split('/')[5]
+                                    : prop.dataUrl.split('/')[4] + '_' + prop.dataUrl.split('/')[5],
                                 type: type,
                             };
                             let nodeModel = context.nodeModel.getNodeById(node);
@@ -322,11 +327,13 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                         // custom
                                         flotiqInternal: json.internal,
                                         // required
-                                        id: typeNonCapitalize === '_media' ? json.id : `${typeNonCapitalize}_${json.id}`,
+                                        id: prop.dataUrl.split('/')[4] === '_media' 
+                                            ? json.id 
+                                            : `${prop.dataUrl.split('/')[4]}_${json.id}`,
                                         parent: null,
                                         children: [],
                                         internal: {
-                                            type: capitalize(typeNonCapitalize),
+                                            type: capitalize(prop.dataUrl.split('/')[4]),
                                             contentDigest: digest(JSON.stringify(json)),
                                         },
                                     });
