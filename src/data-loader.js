@@ -16,9 +16,10 @@ module.exports.getContentTypes = async function (options, apiUrl) {
         });
 
     if (contentTypeDefinitionsResponse.ok) {
+        const disallowedTypes = ['_page', '_layout', '_navigation', '_site']
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
         return contentTypeDefinitions.data.filter(
-            contentTypeDef => !includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1)
+            contentTypeDef => disallowedTypes.indexOf(contentTypeDef.name) === -1 && (!includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1))
     } else {
         if (contentTypeDefinitionsResponse.status === 404) {
             throw new Error(`We couldn't connect to API. Check if you specified correct API url (in most cases it is "https://api.flotiq.com")`)
