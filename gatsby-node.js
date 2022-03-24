@@ -290,13 +290,13 @@ const getType = (propertyConfig, required, property, ctdName) => {
         default:
             return 'String' + (required ? '!' : '');
         case 'number':
-            return 'Int' + (required ? '!' : '');
+            return 'Float' + (required ? '!' : '');
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
-            let type = 
+            let type =
                 propertyConfig.validation.relationContenttype
                 ? (propertyConfig.validation.relationContenttype !== '_media'
                    ? capitalize(propertyConfig.validation.relationContenttype)
@@ -311,7 +311,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return;
                             }
                             let node = {
-                                id: prop.dataUrl.split('/')[4] === '_media' 
+                                id: prop.dataUrl.split('/')[4] === '_media'
                                     ? prop.dataUrl.split('/')[5]
                                     : prop.dataUrl.split('/')[4] + '_' + prop.dataUrl.split('/')[5],
                                 type: type,
@@ -327,8 +327,8 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                         // custom
                                         flotiqInternal: json.internal,
                                         // required
-                                        id: prop.dataUrl.split('/')[4] === '_media' 
-                                            ? json.id 
+                                        id: prop.dataUrl.split('/')[4] === '_media'
+                                            ? json.id
                                             : `${prop.dataUrl.split('/')[4]}_${json.id}`,
                                         parent: null,
                                         children: [],
