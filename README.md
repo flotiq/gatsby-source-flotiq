@@ -154,3 +154,6 @@ You can learn more about [Gatsby Image plugin here](https://www.gatsbyjs.com/doc
 If you wish to talk with us about this project, feel free to hop on [![Discord Chat](https://img.shields.io/discord/682699728454025410.svg)](https://discord.gg/FwXcHnX).
    
 If you found a bug, please report it in [issues](https://github.com/flotiq/gatsby-source-flotiq/issues).
+
+## NPM publish
+To publish a new package in NPM, you need to update the version in the packages.json and packages-lock.json files and then commit the changes with the message "Release x.y.z". Where x.y.z is the new version of the package. Commit about this on the master branch will start building a tag about this version and publishing a new version to npm.
