@@ -1,9 +1,9 @@
 const fetch = require('node-fetch');
 const {createContentDigest} = require(`gatsby-core-utils`);
-const { getGatsbyImageResolver } = require("gatsby-plugin-image/graphql-utils");
-const { generateImageData, getLowResolutionImageURL } = require("gatsby-plugin-image");
-const { getContentTypes, getDeletedObjects, getContentObjects } = require('./src/data-loader');
-const { capitalize, createHeaders } = require('./src/utils')
+const {getGatsbyImageResolver} = require("gatsby-plugin-image/graphql-utils");
+const {generateImageData, getLowResolutionImageURL} = require("gatsby-plugin-image");
+const {getContentTypes, getDeletedObjects, getContentObjects} = require('./src/data-loader');
+const {capitalize, createHeaders} = require('./src/utils')
 
 const digest = str => createContentDigest(str);
 
@@ -298,10 +298,10 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'datasource':
             let type =
                 propertyConfig.validation.relationContenttype
-                ? (propertyConfig.validation.relationContenttype !== '_media'
-                   ? capitalize(propertyConfig.validation.relationContenttype)
-                   : '_media')
-                : 'AllTypes';
+                    ? (propertyConfig.validation.relationContenttype !== '_media'
+                        ? capitalize(propertyConfig.validation.relationContenttype)
+                        : '_media')
+                    : 'AllTypes';
             return {
                 type: `[${type}]`,
                 resolve: async (source, args, context, info) => {
