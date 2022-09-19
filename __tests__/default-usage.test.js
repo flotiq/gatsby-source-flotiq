@@ -28,7 +28,7 @@ describe('onPluginInit', () => {
     test('Success Init plugin', async () => {
         const gatsbyFunctions = {
             actions: createObjectWithMethods(['createNode']),
-            reporter: createObjectWithMethods(['panic']),
+            reporter: createObjectWithMethods(['panic', 'info', 'success']),
             schema: createObjectWithMethods(['buildObjectType'])
         };
         const options = {
@@ -55,7 +55,7 @@ describe('onPluginInit', () => {
     });
 
     test('Failed init plugin when no api key', async () => {
-        const reporter = createObjectWithMethods(['panic']);
+        const reporter = createObjectWithMethods(['panic', 'info']);
         const gatsbyFunctions = {
             actions: createObjectWithMethods(['createNode']),
             reporter: reporter,
