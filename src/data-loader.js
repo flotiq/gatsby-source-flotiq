@@ -8,6 +8,8 @@ module.exports.getContentTypes = async function (reporter, options, apiUrl) {
         includeTypes = null,
     } = options;
 
+    reporter.info('Connecting to Flotiq backend to fetch Conent Type Definitions...');
+    
     let contentTypeDefinitionsResponse = await fetch(
          `${apiUrl}/api/v1/internal/contenttype?limit=10000&order_by=label`,
         {
@@ -16,15 +18,18 @@ module.exports.getContentTypes = async function (reporter, options, apiUrl) {
         });
 
     if (contentTypeDefinitionsResponse.ok) {
+        reporter.success('Conent Type Definitions fetched');
+        
         const disallowedTypes = ['_page', '_layout', '_navigation', '_site'];
         const requiredTypes = ['_tag'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
         
         if(includeTypes) {
+            reporter.info(`Filtering Content Type Definitions to match includeTypes setting: '${includeTypes.join(', ')}'`);
             requiredTypes.forEach((type) => {
                 if(includeTypes.indexOf(type) === -1) {
                     includeTypes.push(type);
-                    reporter.info(`Added required CTD ${type}`);
+                    reporter.info(`Added required Content Type Definition '${type}' to types list`);
                 }
             }); 
         }
