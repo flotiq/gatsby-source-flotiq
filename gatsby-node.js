@@ -190,7 +190,12 @@ exports.createSchemaCustomization = ({actions}, options) => {
             srcSet: String
             originalName: String
             sizes: String
-        }`);
+        }
+        type DataSource {
+            dataUrl: String!
+            type: String!
+        }
+        `);
         createTypes(typeDefs);
     })
 
@@ -296,6 +301,10 @@ const getType = (propertyConfig, required, property, ctdName) => {
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
+            // if includeTypes not null and includeTypes not contains propertyConfig.validation.relationContenttype
+            // use DataSource.
+            // return 'DataSource';
+            // else:
             let type =
                 propertyConfig.validation.relationContenttype
                     ? (propertyConfig.validation.relationContenttype !== '_media'
