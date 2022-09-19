@@ -2,7 +2,7 @@ const fetch = require('node-fetch');
 const workers = require('./workers')
 const {capitalize, createHeaders} = require('./utils')
 
-module.exports.getContentTypes = async function (options, apiUrl) {
+module.exports.getContentTypes = async function (reporter, options, apiUrl) {
     const {
         timeout = 5000,
         includeTypes = null,
@@ -16,8 +16,18 @@ module.exports.getContentTypes = async function (options, apiUrl) {
         });
 
     if (contentTypeDefinitionsResponse.ok) {
-        const disallowedTypes = ['_page', '_layout', '_navigation', '_site']
+        const disallowedTypes = ['_page', '_layout', '_navigation', '_site'];
+        const requiredTypes = ['_tag'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
+        
+        if(includeTypes) {
+            requiredTypes.forEach((type) => {
+                if(includeTypes.indexOf(type) === -1) {
+                    includeTypes.push(type);
+                    reporter.info(`Added required CTD ${type}`);
+                }
+            }); 
+        }
         return contentTypeDefinitions.data.filter(
             contentTypeDef => disallowedTypes.indexOf(contentTypeDef.name) === -1 && (!includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1))
     } else {
