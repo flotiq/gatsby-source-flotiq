@@ -38,7 +38,7 @@ exports.onPluginInit = async ({actions, schema, reporter}, options) => {
     apiUrl = baseUrl;
     globalSchema = schema;
     if (authToken) {
-        contentTypeDefsData = await getContentTypes(options, apiUrl);
+        contentTypeDefsData = await getContentTypes(reporter, options, apiUrl);
     }
 
     if (!apiUrl) {
