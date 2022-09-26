@@ -295,7 +295,7 @@ const getType = (propertyConfig, required, property, ctdName, includeTypes) => {
         default:
             return 'String' + (required ? '!' : '');
         case 'number':
-            return 'Int' + (required ? '!' : '');
+            return 'Float' + (required ? '!' : '');
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'geo':
