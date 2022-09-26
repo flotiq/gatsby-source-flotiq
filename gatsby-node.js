@@ -4,7 +4,7 @@ const {getGatsbyImageResolver} = require("gatsby-plugin-image/graphql-utils");
 const {generateImageData, getLowResolutionImageURL} = require("gatsby-plugin-image");
 const {getContentTypes, getDeletedObjects, getContentObjects} = require('./src/data-loader');
 const {capitalize, createHeaders} = require('./src/utils')
-
+const CTD_MEDIA = '_media';
 const digest = str => createContentDigest(str);
 
 let apiUrl;
@@ -91,7 +91,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
                 // custom
                 flotiqInternal: datum.internal,
                 // required
-                id: ctd.name === '_media' ? datum.id : `${ctd.name}_${datum.id}`,
+                id: ctd.name === CTD_MEDIA ? datum.id : `${ctd.name}_${datum.id}`,
                 parent: null,
                 children: [],
                 internal: {
@@ -120,7 +120,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
 
 exports.createSchemaCustomization = ({actions}, options) => {
     const {createTypes} = actions;
-    createTypeDefs(contentTypeDefsData, globalSchema);
+    createTypeDefs(contentTypeDefsData, globalSchema, options.includeTypes);
 
     typeDefinitionsPromise.then(typeDefs => {
         typeDefs.push(`type FlotiqInternal {
@@ -194,8 +194,8 @@ exports.createSchemaCustomization = ({actions}, options) => {
         type DataSource {
             dataUrl: String!
             type: String!
-        }
-        `);
+        }`
+        );
         createTypes(typeDefs);
     })
 
@@ -239,10 +239,8 @@ exports.createResolvers = ({
     }
 }
 
-const createTypeDefs = (contentTypesDefinitions, schema) => {
+const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
     let typeDefs = [];
-    const names = contentTypesDefinitions.map(ctd => capitalize(ctd.name));
-    typeDefs.push(`union AllTypes = ${names.join(' | ')}`);
     contentTypesDefinitions.forEach(ctd => {
         let tmpDef = {
             name: capitalize(ctd.name),
@@ -254,7 +252,8 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
                 ctd.metaDefinition.propertiesConfig[property],
                 ctd.schemaDefinition.required.indexOf(property) > -1,
                 property,
-                capitalize(ctd.name)
+                capitalize(ctd.name),
+                includeTypes
             );
             if (ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
                 let additionalDef = {
@@ -267,7 +266,8 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
                         ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop],
                         false,
                         prop,
-                        capitalize(ctd.name)
+                        capitalize(ctd.name),
+                        includeTypes
                     );
                 });
                 additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
@@ -282,7 +282,7 @@ const createTypeDefs = (contentTypesDefinitions, schema) => {
 };
 
 
-const getType = (propertyConfig, required, property, ctdName) => {
+const getType = (propertyConfig, required, property, ctdName, includeTypes) => {
 
     switch (propertyConfig.inputType) {
         case 'text':
@@ -295,21 +295,24 @@ const getType = (propertyConfig, required, property, ctdName) => {
         default:
             return 'String' + (required ? '!' : '');
         case 'number':
-            return 'Float' + (required ? '!' : '');
+            return 'Int' + (required ? '!' : '');
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
         case 'datasource':
-            // if includeTypes not null and includeTypes not contains propertyConfig.validation.relationContenttype
-            // use DataSource.
-            // return 'DataSource';
-            // else:
+            if (
+                includeTypes
+                && includeTypes.indexOf(propertyConfig.validation.relationContenttype) === -1
+                && propertyConfig.validation.relationContenttype !== CTD_MEDIA
+            ) {
+                return 'DataSource';
+            }
             let type =
                 propertyConfig.validation.relationContenttype
-                    ? (propertyConfig.validation.relationContenttype !== '_media'
+                    ? (propertyConfig.validation.relationContenttype !== CTD_MEDIA
                         ? capitalize(propertyConfig.validation.relationContenttype)
-                        : '_media')
+                        : CTD_MEDIA)
                     : 'AllTypes';
             return {
                 type: `[${type}]`,
@@ -320,7 +323,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                 return;
                             }
                             let node = {
-                                id: prop.dataUrl.split('/')[4] === '_media'
+                                id: prop.dataUrl.split('/')[4] === CTD_MEDIA
                                     ? prop.dataUrl.split('/')[5]
                                     : prop.dataUrl.split('/')[4] + '_' + prop.dataUrl.split('/')[5],
                                 type: type,
@@ -336,7 +339,7 @@ const getType = (propertyConfig, required, property, ctdName) => {
                                         // custom
                                         flotiqInternal: json.internal,
                                         // required
-                                        id: prop.dataUrl.split('/')[4] === '_media'
+                                        id: prop.dataUrl.split('/')[4] === CTD_MEDIA
                                             ? json.id
                                             : `${prop.dataUrl.split('/')[4]}_${json.id}`,
                                         parent: null,
