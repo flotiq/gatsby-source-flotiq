@@ -7,7 +7,7 @@ gatsby-source-flotiq
 
 ![](https://img.shields.io/npm/v/gatsby-source-flotiq)
 
-Source plugin for pulling data from [Flotiq](http://flotiq.com) into [Gatsby](https://www.gatsbyjs.org/) websites.
+Source plugin for pulling data from [Flotiq](https://flotiq.com) into [Gatsby](https://www.gatsbyjs.org/) websites.
 
 Get up and running in minutes with a starter project:
 * [Simple blog with Gatsby](https://github.com/flotiq/gatsby-starter-blog)
