@@ -2,11 +2,13 @@ const fetch = require('node-fetch');
 const workers = require('./workers')
 const {capitalize, createHeaders} = require('./utils')
 
-module.exports.getContentTypes = async function (options, apiUrl) {
+module.exports.getContentTypes = async function (reporter, options, apiUrl) {
     const {
         timeout = 5000,
         includeTypes = null,
     } = options;
+
+    reporter.info('Connecting to Flotiq backend to fetch Conent Type Definitions...');
 
     let contentTypeDefinitionsResponse = await fetch(
          `${apiUrl}/api/v1/internal/contenttype?limit=10000&order_by=label`,
@@ -16,7 +18,9 @@ module.exports.getContentTypes = async function (options, apiUrl) {
         });
 
     if (contentTypeDefinitionsResponse.ok) {
-        const disallowedTypes = ['_page', '_layout', '_navigation', '_site']
+        reporter.success('Conent Type Definitions fetched');
+
+        const disallowedTypes = ['_page', '_layout', '_navigation', '_site'];
         let contentTypeDefinitions = await contentTypeDefinitionsResponse.json();
         return contentTypeDefinitions.data.filter(
             contentTypeDef => disallowedTypes.indexOf(contentTypeDef.name) === -1 && (!includeTypes || includeTypes.indexOf(contentTypeDef.name) > -1))
