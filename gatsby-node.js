@@ -255,24 +255,7 @@ const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
                 capitalize(ctd.name),
                 includeTypes
             );
-            if (ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
-                let additionalDef = {
-                    name: capitalize(property) + capitalize(ctd.name),
-                    fields: {},
-                    interfaces: ["Node"],
-                };
-                Object.keys(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig).forEach(prop => {
-                    additionalDef.fields[prop] = getType(
-                        ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop],
-                        false,
-                        prop,
-                        capitalize(ctd.name),
-                        includeTypes
-                    );
-                });
-                additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
-                typeDefs.push(schema.buildObjectType(additionalDef));
-            }
+            addAdditionalDefs(typeDefs, ctd.metaDefinition.propertiesConfig[property], property, ctd, schema, includeTypes);
         });
 
         tmpDef.fields.flotiqInternal = `FlotiqInternal!`;
@@ -280,6 +263,27 @@ const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
     });
     typeDefinitionsDeferred.resolve(typeDefs);
 };
+
+const addAdditionalDefs = (typeDefs, property, propertyName, ctd, schema, includeTypes) => {
+    if (property.inputType === 'object') {
+        let additionalDef = {
+            name: capitalize(propertyName) + capitalize(ctd.name),
+            fields: {},
+            interfaces: ["Node"],
+        };
+        Object.keys(property.items.propertiesConfig).forEach(prop => {
+            additionalDef.fields[prop] = getType(
+                property.items.propertiesConfig[prop],
+                false,
+                prop,
+                capitalize(ctd.name),
+                includeTypes
+            );
+            addAdditionalDefs(typeDefs, property.items.propertiesConfig[prop], prop, ctd, schema, includeTypes);
+        });
+        typeDefs.push(schema.buildObjectType(additionalDef));
+    }
+}
 
 
 const getType = (propertyConfig, required, property, ctdName, includeTypes) => {
