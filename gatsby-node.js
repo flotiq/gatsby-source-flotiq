@@ -239,6 +239,54 @@ exports.createResolvers = ({
     }
 }
 
+
+const createAditionalDef = (
+    name,
+    property,
+    properties,
+    includeTypes,
+    schema,
+    processedDefs=[],
+) => {
+    const defName = capitalize(property) + capitalize(name);
+    let typeDefs=[];
+
+    let additionalDef = {
+        name: defName,
+        fields: {},
+        interfaces: ["Node"],
+    };
+    Object.keys(properties[property].items.propertiesConfig).forEach(prop => {
+        let propConfig = properties[property].items.propertiesConfig[prop];
+
+        if (propConfig.inputType === 'object' && !processedDefs.includes(defName)) {
+            typeDefs.push(...createAditionalDef(
+                name,
+                prop,
+                properties[property].items.propertiesConfig,
+                includeTypes,
+                schema,
+                processedDefs
+            ));
+        }
+        additionalDef.fields[prop] = getType(
+            propConfig,
+            false,
+            prop,
+            capitalize(name),
+            includeTypes
+        );
+    });
+    additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
+
+    if(!processedDefs.includes(defName)){
+        typeDefs.push(schema.buildObjectType(additionalDef));
+        processedDefs.push(defName)
+    }
+
+    return typeDefs;
+}
+
 const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
     let typeDefs = [];
     contentTypesDefinitions.forEach(ctd => {
@@ -256,22 +304,15 @@ const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
                 includeTypes
             );
             if (ctd.metaDefinition.propertiesConfig[property].inputType === 'object') {
-                let additionalDef = {
-                    name: capitalize(property) + capitalize(ctd.name),
-                    fields: {},
-                    interfaces: ["Node"],
-                };
-                Object.keys(ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig).forEach(prop => {
-                    additionalDef.fields[prop] = getType(
-                        ctd.metaDefinition.propertiesConfig[property].items.propertiesConfig[prop],
-                        false,
-                        prop,
-                        capitalize(ctd.name),
-                        includeTypes
-                    );
-                });
-                additionalDef.fields.flotiqInternal = `FlotiqInternal!`;
-                typeDefs.push(schema.buildObjectType(additionalDef));
+                let additionalDef = createAditionalDef(
+                    ctd.name,
+                    property,
+                    ctd.metaDefinition.propertiesConfig,
+                    includeTypes,
+                    schema
+                );
+
+                typeDefs.push(...additionalDef);
             }
         });
 
