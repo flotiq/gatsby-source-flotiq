@@ -289,6 +289,8 @@ const createAditionalDef = (
 
 const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
     let typeDefs = [];
+    const names = contentTypesDefinitions.map(ctd => capitalize(ctd.name));
+    typeDefs.push(`union AllTypes = ${names.join(' | ')}`);
     contentTypesDefinitions.forEach(ctd => {
         let tmpDef = {
             name: capitalize(ctd.name),
@@ -344,6 +346,7 @@ const getType = (propertyConfig, required, property, ctdName, includeTypes) => {
         case 'datasource':
             if (
                 includeTypes
+                && propertyConfig.validation.relationContenttype !== ''
                 && includeTypes.indexOf(propertyConfig.validation.relationContenttype) === -1
                 && propertyConfig.validation.relationContenttype !== CTD_MEDIA
             ) {
