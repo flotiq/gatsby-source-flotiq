@@ -298,6 +298,9 @@ const createTypeDefs = (contentTypesDefinitions, schema, includeTypes) => {
             interfaces: ["Node"],
         };
         Object.keys(ctd.schemaDefinition.allOf[1].properties).forEach(property => {
+            if(['if', 'else', 'then'].includes(property) || !ctd.metaDefinition.propertiesConfig[property]) {
+                return;
+            }
             tmpDef.fields[property] = getType(
                 ctd.metaDefinition.propertiesConfig[property],
                 ctd.schemaDefinition.required.indexOf(property) > -1,
