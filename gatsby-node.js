@@ -81,7 +81,7 @@ exports.sourceNodes = async (gatsbyFunctions, options) => {
         if (lastUpdate && lastUpdate.updated_at) {
             removed = await getDeletedObjects(gatsbyFunctions, options, lastUpdate.updated_at, contentTypeDefsData, apiUrl, async (ctd, id) => {
                 let node = existingNodes.find(n => n.id === `${ctd.name}_${id}`);
-                return await deleteNode({node});
+                return await deleteNode(node);
             });
         }
 
