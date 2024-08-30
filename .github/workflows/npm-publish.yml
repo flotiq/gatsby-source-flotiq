@@ -16,7 +16,7 @@ jobs:
           create_tag: "true"
           commit_pattern: "^Release (\\S+)"
           workspace: "."
-          publish_command: "yarn"
+          publish_command: "npm"
           publish_args: "--non-interactive"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
