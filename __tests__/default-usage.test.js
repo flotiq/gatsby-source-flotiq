@@ -152,7 +152,7 @@ describe('sourceNodes', () => {
             await sourceNodes(gatsbyFunctions, options)
 
             verifyAllWhenMocksCalled()
-            expect(actions.deleteNode).toBeCalledWith({node: expect.objectContaining({id: expect.stringContaining(CTD1_OBJECT1.id)})})
+            expect(actions.deleteNode).toBeCalledWith(expect.objectContaining({id: expect.stringContaining(CTD1_OBJECT1.id)}))
         });
 
         test('Updates only new data', async () => {
