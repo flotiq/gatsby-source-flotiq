@@ -337,15 +337,18 @@ const getType = (propertyConfig, required, property, ctdName, includeTypes) => {
         case 'textMarkdown':
         case 'email':
         case 'radio':
-        case 'select':
         default:
             return 'String' + (required ? '!' : '');
+        case 'select':
+            return propertyConfig.multiple ? ['String' + (required ? '!' : '')] : 'String' + (required ? '!' : '');
         case 'number':
             return 'Float' + (required ? '!' : '');
         case 'checkbox':
             return 'Boolean' + (required ? '!' : '');
         case 'geo':
             return 'FlotiqGeo' + (required ? '!' : '');
+        case 'simpleList':
+            return ['String' + (required ? '!' : '')];
         case 'datasource':
             if (
                 includeTypes
