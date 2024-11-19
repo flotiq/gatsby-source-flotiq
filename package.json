@@ -18,7 +18,7 @@
         "node-fetch": "^2.6.7"
     },
     "devDependencies": {
-        "gatsby": "^5.13.3",
+        "gatsby": "^5.14.0",
         "gatsby-plugin-image": "^3.3.2",
         "gatsby-plugin-sharp": "^5.13.1",
         "jest": "^27.4.5",
@@ -27,7 +27,7 @@
         "react-dom": "^18.2.0"
     },
     "peerDependencies": {
-        "gatsby": "^5.13.3",
+        "gatsby": "^5.14.0",
         "gatsby-plugin-image": "^3.3.2",
         "gatsby-plugin-sharp": "^5.13.1",
         "react": "^18.2.0",
