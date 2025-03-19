@@ -69,7 +69,7 @@ module.exports.getContentObjects = async function (gatsbyFunctions, options, sin
     } = options;
 
     maxConcurrentDataDownloads = Math.max(Math.min(maxConcurrentDataDownloads, 50), 1)  // 1 <= maxConcurrentDataDownloads  <= 50
-    singleFetchLimit = Math.max(Math.min(singleFetchLimit, 5000), 1);                   // 1 <= singleFetchLimit            <= 5000
+    singleFetchLimit = Math.max(Math.min(singleFetchLimit, 1000), 1);                   // 1 <= singleFetchLimit            <= 1000
 
     let changed = 0;
     let downloadJobs = contentTypes.map(ctd => {
